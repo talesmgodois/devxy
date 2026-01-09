@@ -818,60 +818,65 @@ export function Terminal() {
     </div>
   );
 
-  // Tool selector dropdown
+  // Tool selector dropdown - unified for both visual tools and interpreters
   const renderToolSelector = () => {
-    if (panelMode === 'interpreter') {
-      return (
-        <select
-          value={activeInterpreter || ''}
-          onChange={(e) => {
-            e.stopPropagation();
-            const lang = e.target.value;
-            if (lang && EMBEDDED_INTERPRETERS[lang]) {
+    const currentValue = panelMode === 'interpreter' 
+      ? (activeInterpreter ? `ei.${activeInterpreter}` : '')
+      : (activeVisualTool ? `v.${activeVisualTool}` : '');
+
+    return (
+      <select
+        value={currentValue}
+        onChange={(e) => {
+          e.stopPropagation();
+          const value = e.target.value;
+          
+          if (value.startsWith('ei.')) {
+            const lang = value.slice(3);
+            if (EMBEDDED_INTERPRETERS[lang]) {
               setActiveInterpreter(lang);
+              setPanelMode('interpreter');
               addOutput('command', `> ei.${lang}`);
               addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
             }
-          }}
-          onClick={(e) => e.stopPropagation()}
-          className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 outline-none cursor-pointer hover:bg-yellow-500/30 transition-colors"
-        >
-          {!activeInterpreter && <option value="">Select...</option>}
+          } else if (value.startsWith('v.')) {
+            const tool = value.slice(2);
+            if (VISUAL_TOOLS[tool]) {
+              setActiveVisualTool(tool);
+              setVisualToolArg(undefined);
+              setPanelMode('visual');
+              addOutput('command', `> v.${tool}`);
+              addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+            }
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className={`text-xs px-2 py-1 rounded border outline-none cursor-pointer transition-colors ${
+          panelMode === 'interpreter'
+            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
+            : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
+        }`}
+      >
+        {!currentValue && <option value="">Select...</option>}
+        <optgroup label="Visual Tools" className="bg-card text-foreground">
+          {Object.entries(VISUAL_TOOLS).map(([key, tool]) => (
+            <option key={`v.${key}`} value={`v.${key}`} className="bg-card text-foreground">
+              {tool.icon} v.{key}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Interpreters" className="bg-card text-foreground">
           {Object.entries(EMBEDDED_INTERPRETERS)
             .filter(([key], _, arr) => {
               if (key === 'js' && arr.some(([k]) => k === 'javascript')) return false;
               return true;
             })
             .map(([key, interp]) => (
-              <option key={key} value={key} className="bg-card text-foreground">
+              <option key={`ei.${key}`} value={`ei.${key}`} className="bg-card text-foreground">
                 {interp.icon} ei.{key}
               </option>
             ))}
-        </select>
-      );
-    }
-    return (
-      <select
-        value={activeVisualTool || ''}
-        onChange={(e) => {
-          e.stopPropagation();
-          const tool = e.target.value;
-          if (tool && VISUAL_TOOLS[tool]) {
-            setActiveVisualTool(tool);
-            setVisualToolArg(undefined);
-            addOutput('command', `> v.${tool}`);
-            addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
-          }
-        }}
-        onClick={(e) => e.stopPropagation()}
-        className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30 outline-none cursor-pointer hover:bg-primary/30 transition-colors"
-      >
-        {!activeVisualTool && <option value="">Select...</option>}
-        {Object.entries(VISUAL_TOOLS).map(([key, tool]) => (
-          <option key={key} value={key} className="bg-card text-foreground">
-            {tool.icon} v.{key}
-          </option>
-        ))}
+        </optgroup>
       </select>
     );
   };
