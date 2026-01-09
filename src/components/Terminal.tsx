@@ -836,10 +836,29 @@ export function Terminal() {
                     ))}
                 </select>
               )}
-              {panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
-                  {VISUAL_TOOLS[activeVisualTool].icon} {activeVisualTool}
-                </span>
+              {panelMode === 'visual' && (
+                <select
+                  value={activeVisualTool || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const tool = e.target.value;
+                    if (tool && VISUAL_TOOLS[tool]) {
+                      setActiveVisualTool(tool);
+                      setVisualToolArg(undefined);
+                      addOutput('command', `> v.${tool}`);
+                      addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30 outline-none cursor-pointer hover:bg-primary/30 transition-colors"
+                >
+                  {!activeVisualTool && <option value="">Select...</option>}
+                  {Object.entries(VISUAL_TOOLS).map(([key, tool]) => (
+                    <option key={key} value={key} className="bg-card text-foreground">
+                      {tool.icon} v.{key}
+                    </option>
+                  ))}
+                </select>
               )}
             </div>
             <button
