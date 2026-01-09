@@ -939,10 +939,11 @@ export function Terminal() {
                         key={cmd.name}
                         data-index={currentIndex}
                         onClick={() => selectAutocompleteItem(cmd.name)}
+                        onMouseEnter={() => setAutocompleteIndex(currentIndex)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors ${
                           currentIndex === autocompleteIndex 
                             ? 'bg-primary/20 text-foreground' 
-                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                            : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
                         <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
