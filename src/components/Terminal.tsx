@@ -39,6 +39,8 @@ export function Terminal() {
   ]);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [tabIndex, setTabIndex] = useState(-1);
+  const [tabSuggestions, setTabSuggestions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
@@ -105,42 +107,64 @@ export function Terminal() {
   const getGhostText = (): string => {
     const trimmed = input.trim();
     if (!trimmed) return '';
-    const suggestions = getAutocompleteSuggestions(trimmed);
-    if (suggestions.length === 1) {
-      return suggestions[0].slice(trimmed.length);
+    
+    // If we're cycling through suggestions, show the current one
+    if (tabIndex >= 0 && tabSuggestions.length > 0) {
+      const currentSuggestion = tabSuggestions[tabIndex];
+      return currentSuggestion.slice(trimmed.length);
     }
-    // If multiple suggestions, show the first one's completion
-    if (suggestions.length > 1) {
+    
+    const suggestions = getAutocompleteSuggestions(trimmed);
+    if (suggestions.length >= 1) {
       return suggestions[0].slice(trimmed.length);
     }
     return '';
   };
 
+  const resetTabCycle = () => {
+    setTabIndex(-1);
+    setTabSuggestions([]);
+  };
+
+  const handleInputChange = (value: string) => {
+    setInput(value);
+    resetTabCycle();
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
+      resetTabCycle();
       handleSubmit();
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      const suggestions = getAutocompleteSuggestions(input.trim());
+      const trimmed = input.trim();
+      const suggestions = getAutocompleteSuggestions(trimmed);
+      
+      if (suggestions.length === 0) return;
+      
       if (suggestions.length === 1) {
+        // Single match - complete it
         setInput(suggestions[0]);
-      } else if (suggestions.length > 1) {
-        // Find common prefix
-        const commonPrefix = suggestions.reduce((prefix, cmd) => {
-          while (cmd.indexOf(prefix) !== 0) {
-            prefix = prefix.slice(0, -1);
-          }
-          return prefix;
-        }, suggestions[0]);
-        
-        if (commonPrefix.length > input.trim().length) {
-          setInput(commonPrefix);
+        resetTabCycle();
+      } else {
+        // Multiple matches - cycle through them zsh-style
+        if (tabSuggestions.length === 0 || tabSuggestions.join() !== suggestions.join()) {
+          // First Tab press or suggestions changed - start cycling
+          setTabSuggestions(suggestions);
+          setTabIndex(0);
+          setInput(suggestions[0]);
         } else {
-          addOutput('info', `Suggestions: ${suggestions.join('  ')}`);
+          // Continue cycling
+          const nextIndex = (tabIndex + 1) % suggestions.length;
+          setTabIndex(nextIndex);
+          setInput(suggestions[nextIndex]);
         }
       }
+    } else if (e.key === 'Escape') {
+      resetTabCycle();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      resetTabCycle();
       if (history.length > 0) {
         const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
         setHistoryIndex(newIndex);
@@ -148,6 +172,7 @@ export function Terminal() {
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
+      resetTabCycle();
       if (historyIndex !== -1) {
         const newIndex = historyIndex + 1;
         if (newIndex >= history.length) {
@@ -161,6 +186,9 @@ export function Terminal() {
     } else if (e.key === 'l' && e.ctrlKey) {
       e.preventDefault();
       setOutput([]);
+    } else {
+      // Any other key resets the tab cycle
+      resetTabCycle();
     }
   };
 
@@ -235,7 +263,7 @@ export function Terminal() {
               ref={inputRef}
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10"
               placeholder="Type a command..."
