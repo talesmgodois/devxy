@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
 import { VISUAL_TOOLS } from './visual-tools';
-import { LayoutGrid, X } from 'lucide-react';
+import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
+import { LayoutGrid, X, Terminal as TerminalIcon } from 'lucide-react';
 
 interface OutputLine {
   id: number;
@@ -99,6 +100,8 @@ export function Terminal() {
   const [showVisualPanel, setShowVisualPanel] = useState(false);
   const [activeVisualTool, setActiveVisualTool] = useState<string | null>(null);
   const [visualToolArg, setVisualToolArg] = useState<string | undefined>(undefined);
+  const [activeInterpreter, setActiveInterpreter] = useState<string | null>(null);
+  const [panelMode, setPanelMode] = useState<'visual' | 'interpreter'>('visual');
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const visualPanelRef = useRef<HTMLDivElement>(null);
@@ -247,7 +250,10 @@ export function Terminal() {
       const visualHelpText = Object.entries(VISUAL_TOOLS)
         .map(([name, { description, icon }]) => `  v.${name.padEnd(18)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
+      const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
+        .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
+        .join('\n');
+      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
       return;
     }
 
@@ -265,6 +271,23 @@ export function Terminal() {
         }
       }
       addOutput('error', `Visual tool not found: '${cmd}'. Available: ${Object.keys(VISUAL_TOOLS).map(t => 'v.' + t).join(', ')}`);
+      return;
+    }
+
+    // Check for embedded interpreter commands (ei.language)
+    if (lowerCmd.startsWith('ei.')) {
+      const interpreterMatch = lowerCmd.match(/^ei\.(\w+)$/);
+      if (interpreterMatch) {
+        const [, langName] = interpreterMatch;
+        if (EMBEDDED_INTERPRETERS[langName]) {
+          setActiveInterpreter(langName);
+          setPanelMode('interpreter');
+          setShowVisualPanel(true);
+          addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[langName].icon} ${EMBEDDED_INTERPRETERS[langName].description}`);
+          return;
+        }
+      }
+      addOutput('error', `Interpreter not found: '${cmd}'. Available: ${Object.keys(EMBEDDED_INTERPRETERS).map(t => 'ei.' + t).join(', ')}`);
       return;
     }
 
@@ -394,6 +417,7 @@ export function Terminal() {
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
+      ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
       { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
@@ -424,7 +448,7 @@ export function Terminal() {
     const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
-    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), 'latest', 'help', 'clear'];
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
     
     // Use fuzzy matching and sort by score
     const matches = allCommands
@@ -624,6 +648,7 @@ export function Terminal() {
             generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator') },
             pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe') },
             visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual') },
+            interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter') },
             history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history') },
             utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility') },
           };
@@ -654,12 +679,14 @@ export function Terminal() {
                           type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
                           type === 'pipe' ? 'bg-primary/20 text-primary' :
                           type === 'visual' ? 'bg-purple-500/20 text-purple-400' :
+                          type === 'interpreter' ? 'bg-yellow-500/20 text-yellow-400' :
                           type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
                           'bg-muted text-muted-foreground'
                         }`}>
                           {type === 'generator' ? 'GEN' : 
                            type === 'pipe' ? 'PIPE' : 
                            type === 'visual' ? 'VIS' :
+                           type === 'interpreter' ? 'LANG' :
                            type === 'history' ? 'HIST' : 'UTIL'}
                         </span>
                         <span className="font-medium text-sm">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
@@ -769,12 +796,23 @@ export function Terminal() {
             }
           }}
         >
-          {/* Visual panel header */}
+          {/* Panel header */}
           <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
             <div className="flex items-center gap-2">
-              <LayoutGrid className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-foreground">Visual Tools</span>
-              {activeVisualTool && VISUAL_TOOLS[activeVisualTool] && (
+              {panelMode === 'interpreter' ? (
+                <TerminalIcon className="w-4 h-4 text-yellow-400" />
+              ) : (
+                <LayoutGrid className="w-4 h-4 text-primary" />
+              )}
+              <span className="text-sm font-medium text-foreground">
+                {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
+              </span>
+              {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
+                  {EMBEDDED_INTERPRETERS[activeInterpreter].icon} {activeInterpreter}
+                </span>
+              )}
+              {panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
                   {VISUAL_TOOLS[activeVisualTool].icon} {activeVisualTool}
                 </span>
@@ -791,9 +829,14 @@ export function Terminal() {
             </button>
           </div>
 
-          {/* Visual tool content */}
+          {/* Panel content */}
           <div className="flex-1 overflow-auto">
-            {activeVisualTool && VISUAL_TOOLS[activeVisualTool] ? (
+            {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
+              (() => {
+                const InterpreterComponent = EMBEDDED_INTERPRETERS[activeInterpreter].component;
+                return <InterpreterComponent />;
+              })()
+            ) : panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] ? (
               (() => {
                 const ToolComponent = VISUAL_TOOLS[activeVisualTool].component;
                 return <ToolComponent initialValue={visualToolArg} />;
@@ -801,30 +844,60 @@ export function Terminal() {
             ) : (
               <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <LayoutGrid className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">No Visual Tool Active</h3>
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">No Tool Active</h3>
                 <p className="text-sm text-muted-foreground/70 mb-6">
-                  Run a visual command to open a tool here
+                  Run a command to open a tool here
                 </p>
-                <div className="space-y-2">
-                  {Object.entries(VISUAL_TOOLS).map(([name, tool]) => (
-                    <button
-                      key={name}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveVisualTool(name);
-                        setVisualToolArg(undefined);
-                        addOutput('command', `> v.${name}`);
-                        addOutput('info', `📺 Opening visual tool: ${tool.icon} ${tool.description}`);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left transition-colors"
-                    >
-                      <span className="text-xl">{tool.icon}</span>
-                      <div>
-                        <div className="text-sm font-medium text-foreground">v.{name}</div>
-                        <div className="text-xs text-muted-foreground">{tool.description}</div>
-                      </div>
-                    </button>
-                  ))}
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Visual Tools</h4>
+                    <div className="space-y-2">
+                      {Object.entries(VISUAL_TOOLS).map(([name, tool]) => (
+                        <button
+                          key={name}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveVisualTool(name);
+                            setVisualToolArg(undefined);
+                            setPanelMode('visual');
+                            addOutput('command', `> v.${name}`);
+                            addOutput('info', `📺 Opening visual tool: ${tool.icon} ${tool.description}`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left transition-colors"
+                        >
+                          <span className="text-xl">{tool.icon}</span>
+                          <div>
+                            <div className="text-sm font-medium text-foreground">v.{name}</div>
+                            <div className="text-xs text-muted-foreground">{tool.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Interpreters</h4>
+                    <div className="space-y-2">
+                      {Object.entries(EMBEDDED_INTERPRETERS).map(([name, interp]) => (
+                        <button
+                          key={name}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveInterpreter(name);
+                            setPanelMode('interpreter');
+                            addOutput('command', `> ei.${name}`);
+                            addOutput('info', `🖥️ Opening interpreter: ${interp.icon} ${interp.description}`);
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-left transition-colors"
+                        >
+                          <span className="text-xl">{interp.icon}</span>
+                          <div>
+                            <div className="text-sm font-medium text-foreground">ei.{name}</div>
+                            <div className="text-xs text-muted-foreground">{interp.description}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
