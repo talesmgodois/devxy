@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
+    <!-- Preconnect hints for performance -->
+    <link rel="preconnect" href="https://cloud.umami.is" crossorigin />
+    <link rel="dns-prefetch" href="https://cloud.umami.is" />
+    
     <!-- Primary Meta Tags -->
     <title>Devxy - Console de Micro-Ferramentas para Desenvolvedores</title>
     <meta name="title" content="Devxy - Console de Micro-Ferramentas para Desenvolvedores" />
@@ -26,6 +30,10 @@
       property="og:description"
       content="Gerador de CPF, CNPJ, Título Eleitoral, emails temporários e mais. Console interativo com +15 ferramentas para desenvolvedores brasileiros."
     />
+    <meta property="og:image" content="https://devxy.lovable.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Devxy - Console de Micro-Ferramentas para Desenvolvedores" />
     <meta property="og:site_name" content="Devxy" />
     <meta property="og:locale" content="pt_BR" />
 
@@ -37,6 +45,8 @@
       name="twitter:description"
       content="Gerador de CPF, CNPJ, Título Eleitoral, emails temporários e mais. Console interativo com +15 ferramentas para desenvolvedores brasileiros."
     />
+    <meta name="twitter:image" content="https://devxy.lovable.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Devxy - Console de Micro-Ferramentas para Desenvolvedores" />
 
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -78,6 +88,13 @@
 
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="padding: 2rem; text-align: center; font-family: system-ui, sans-serif;">
+        <h1>Devxy - Console de Micro-Ferramentas</h1>
+        <p>Este aplicativo requer JavaScript para funcionar.</p>
+        <p>Por favor, habilite o JavaScript no seu navegador para usar o Devxy.</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
