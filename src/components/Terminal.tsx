@@ -140,11 +140,42 @@ const WELCOME_MESSAGE_MOBILE = `
 |  Type 'help' for cmds  |
 +------------------------+`;
 
+const HISTORY_STORAGE_KEY = 'devxy-command-history';
+const MAX_STORED_HISTORY = 100;
+
+const loadHistoryFromStorage = (): { cmd: string; timestamp: Date }[] => {
+  try {
+    const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed.map((entry: { cmd: string; timestamp: string }) => ({
+        cmd: entry.cmd,
+        timestamp: new Date(entry.timestamp),
+      }));
+    }
+  } catch (e) {
+    console.error('Failed to load history from storage:', e);
+  }
+  return [];
+};
+
+const saveHistoryToStorage = (history: { cmd: string; timestamp: Date }[]) => {
+  try {
+    const toStore = history.slice(-MAX_STORED_HISTORY).map(entry => ({
+      cmd: entry.cmd,
+      timestamp: entry.timestamp.toISOString(),
+    }));
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(toStore));
+  } catch (e) {
+    console.error('Failed to save history to storage:', e);
+  }
+};
+
 export function Terminal() {
   const isMobile = useIsMobile();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
-  const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>([]);
+  const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>(() => loadHistoryFromStorage());
   const [resultHistory, setResultHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -331,7 +362,7 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
       return;
     }
 
@@ -360,6 +391,12 @@ export function Terminal() {
         .join('\n');
       
       addOutput('info', `📋 Recent commands (newest first):\n\n${output}`);
+      return;
+    }
+
+    // Clear history command
+    if (lowerCmd === 'clearhistory' || lowerCmd === 'clear-history') {
+      clearHistory();
       return;
     }
 
@@ -435,11 +472,19 @@ export function Terminal() {
 
   const handleSubmit = () => {
     if (input.trim()) {
-      setHistory(prev => [...prev, { cmd: input, timestamp: new Date() }]);
+      const newHistory = [...history, { cmd: input, timestamp: new Date() }];
+      setHistory(newHistory);
+      saveHistoryToStorage(newHistory);
       setHistoryIndex(-1);
       processCommand(input);
       setInput('');
     }
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    addOutput('info', '🗑️ Command history cleared.');
   };
 
   // Fuzzy match function - returns score (higher = better) or -1 if no match
