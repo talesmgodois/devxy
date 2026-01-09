@@ -21,12 +21,12 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
 
   const actions: FABAction[] = [
     {
-      id: 'rndcpf',
+      id: 'r.cpf',
       icon: <Zap className="w-3.5 h-3.5" />,
       label: 'CPF',
       color: 'bg-terminal-success/20 text-terminal-success border-terminal-success/30',
       onClick: () => {
-        onRunCommand('rndcpf');
+        onRunCommand('r.cpf');
         setIsOpen(false);
       },
     },

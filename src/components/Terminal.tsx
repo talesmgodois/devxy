@@ -14,14 +14,59 @@ interface OutputLine {
   timestamp?: Date;
 }
 
-// Generator commands (no input required)
-const GENERATOR_COMMANDS: Record<string, { fn: () => string; desc: string }> = {
-  rndcpf: { fn: generateCPF, desc: 'Generate random Brazilian CPF' },
-  rndcnpj: { fn: generateCNPJ, desc: 'Generate random Brazilian CNPJ' },
-  rndtituloeleitor: { fn: generateTituloEleitor, desc: 'Generate random Brazilian Titulo Eleitoral' },
-  rndusername: { fn: generateUserName, desc: 'Generate random username' },
-  rndnickname: { fn: generateNickName, desc: 'Generate random nickname' },
-  rndemail: { fn: generateEmail, desc: 'Generate random email address' },
+// Parse command arguments
+interface CommandArgs {
+  formatted: boolean;
+  number: number;
+}
+
+const parseArgs = (argsStr: string): CommandArgs => {
+  const args: CommandArgs = { formatted: false, number: 1 };
+  const tokens = argsStr.trim().split(/\s+/);
+  
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '-f' || token === '--formatted') {
+      args.formatted = true;
+    } else if (token === '-n' || token === '--number') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        const num = parseInt(next, 10);
+        if (!isNaN(num) && num > 0 && num <= 100) {
+          args.number = num;
+          i++; // skip next token
+        }
+      }
+    }
+  }
+  
+  return args;
+};
+
+// Remove formatting from CPF (XXX.XXX.XXX-XX -> XXXXXXXXXXX)
+const unformatCPF = (cpf: string): string => cpf.replace(/[.\-]/g, '');
+
+// Remove formatting from CNPJ (XX.XXX.XXX/XXXX-XX -> XXXXXXXXXXXXXX)
+const unformatCNPJ = (cnpj: string): string => cnpj.replace(/[.\-\/]/g, '');
+
+// Remove formatting from Titulo Eleitor (XXXXXXXX XXXX -> XXXXXXXXXXXX)
+const unformatTituloEleitor = (titulo: string): string => titulo.replace(/\s/g, '');
+
+// Generator commands (no input required) - now with r. prefix
+interface GeneratorCommand {
+  fn: () => string;
+  desc: string;
+  supportsFormatted?: boolean;
+  unformat?: (s: string) => string;
+}
+
+const GENERATOR_COMMANDS: Record<string, GeneratorCommand> = {
+  'r.cpf': { fn: generateCPF, desc: 'Generate random Brazilian CPF [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatCPF },
+  'r.cnpj': { fn: generateCNPJ, desc: 'Generate random Brazilian CNPJ [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatCNPJ },
+  'r.titulo': { fn: generateTituloEleitor, desc: 'Generate random Brazilian Titulo Eleitoral [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatTituloEleitor },
+  'r.user': { fn: generateUserName, desc: 'Generate random username [-n count]' },
+  'r.nick': { fn: generateNickName, desc: 'Generate random nickname [-n count]' },
+  'r.email': { fn: generateEmail, desc: 'Generate random email address [-n count]' },
 };
 
 // Pipe commands (accept input from previous command or argument)
@@ -187,29 +232,44 @@ export function Terminal() {
   };
 
   const executeCommand = async (cmdStr: string, pipedInput?: string): Promise<string | null> => {
-    const trimmedCmd = cmdStr.trim().toLowerCase();
+    const trimmed = cmdStr.trim();
+    const parts = trimmed.split(/\s+/);
+    const baseCmd = parts[0].toLowerCase();
+    const argsStr = parts.slice(1).join(' ');
     
-    // Check if it's a generator command
-    const genCommand = GENERATOR_COMMANDS[trimmedCmd];
+    // Check if it's a generator command (r.xxx)
+    const genCommand = GENERATOR_COMMANDS[baseCmd];
     if (genCommand) {
-      return genCommand.fn();
+      const args = parseArgs(argsStr);
+      const results: string[] = [];
+      
+      for (let i = 0; i < args.number; i++) {
+        let result = genCommand.fn();
+        // If not formatted and command supports it, remove formatting
+        if (!args.formatted && genCommand.supportsFormatted && genCommand.unformat) {
+          result = genCommand.unformat(result);
+        }
+        results.push(result);
+      }
+      
+      return results.join('\n');
     }
     
     // Check if it's a pipe command
-    const pipeCommand = PIPE_COMMANDS[trimmedCmd];
+    const pipeCommand = PIPE_COMMANDS[baseCmd];
     if (pipeCommand) {
       return await pipeCommand.fn(pipedInput || '');
     }
     
     // Check for latest command
-    if (trimmedCmd === 'latest') {
+    if (baseCmd === 'latest') {
       const results = resultHistoryRef.current;
       if (results.length === 0) return 'No previous results';
       return results[results.length - 1];
     }
     
     // Check for latest(index, count) pattern
-    const latestMatch = trimmedCmd.match(/^latest\((\d+)(?:,\s*(\d+))?\)$/);
+    const latestMatch = baseCmd.match(/^latest\((\d+)(?:,\s*(\d+))?\)$/);
     if (latestMatch) {
       const results = resultHistoryRef.current;
       if (results.length === 0) return 'No previous results';
@@ -231,7 +291,7 @@ export function Terminal() {
     }
     
     // Check for pipe command with argument: xc(text)
-    const argMatch = trimmedCmd.match(/^(\w+)\((.+)\)$/);
+    const argMatch = baseCmd.match(/^(\w+)\((.+)\)$/);
     if (argMatch) {
       const [, cmdName, arg] = argMatch;
       const pipeCmd = PIPE_COMMANDS[cmdName];
@@ -270,7 +330,7 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
       return;
     }
 
