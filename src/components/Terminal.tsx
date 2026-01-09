@@ -101,6 +101,7 @@ export function Terminal() {
   const [visualToolArg, setVisualToolArg] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
+  const visualPanelRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
   const resultHistoryRef = useRef<string[]>([]);
 
@@ -114,10 +115,39 @@ export function Terminal() {
     }
   }, [output]);
 
-  // Global '/' shortcut to open command palette
+  // Global keyboard shortcuts
   useEffect(() => {
     const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
-      // Only trigger if not already focused on input
+      // Ctrl+E to toggle focus between terminal and visual panel
+      if (e.key === 'e' && e.ctrlKey) {
+        e.preventDefault();
+        if (showVisualPanel) {
+          // Check if focus is in visual panel
+          const isInVisualPanel = visualPanelRef.current?.contains(document.activeElement);
+          if (isInVisualPanel) {
+            // Focus back to terminal input
+            inputRef.current?.focus();
+          } else {
+            // Focus first input in visual panel
+            const firstInput = visualPanelRef.current?.querySelector('input, textarea, select') as HTMLElement;
+            if (firstInput) {
+              firstInput.focus();
+            }
+          }
+        } else {
+          // Open visual panel and focus it
+          setShowVisualPanel(true);
+          setTimeout(() => {
+            const firstInput = visualPanelRef.current?.querySelector('input, textarea, select') as HTMLElement;
+            if (firstInput) {
+              firstInput.focus();
+            }
+          }, 100);
+        }
+        return;
+      }
+      
+      // '/' shortcut to open command palette (only if not in input)
       if (document.activeElement === inputRef.current) return;
       
       if (e.key === '/') {
@@ -130,7 +160,7 @@ export function Terminal() {
 
     document.addEventListener('keydown', handleGlobalKeyDown);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
-  }, []);
+  }, [showVisualPanel]);
 
   const addOutput = (type: OutputLine['type'], content: string) => {
     setOutput(prev => [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }]);
@@ -721,7 +751,7 @@ export function Terminal() {
 
         {/* Status bar */}
         <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
-          <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear</span>
+          <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear • Ctrl+E Toggle Panel</span>
           <span>v1.0.0</span>
         </footer>
       </div>
@@ -729,6 +759,7 @@ export function Terminal() {
       {/* Visual Tools Panel */}
       {showVisualPanel && (
         <div 
+          ref={visualPanelRef}
           className="w-1/2 border-l border-border/50 flex flex-col bg-card/30"
           onClick={(e) => e.stopPropagation()}
         >
