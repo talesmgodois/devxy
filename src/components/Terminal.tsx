@@ -364,7 +364,8 @@ export function Terminal() {
             <button
               key={cmd}
               onClick={() => {
-                setInput(cmd);
+                setHistory(prev => [...prev, cmd]);
+                processCommand(cmd);
                 inputRef.current?.focus();
               }}
               className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50"
@@ -379,9 +380,13 @@ export function Terminal() {
               onClick={() => {
                 const currentInput = input.trim();
                 if (currentInput && !currentInput.includes('|')) {
-                  setInput(`${currentInput} | ${cmd}`);
+                  const fullCmd = `${currentInput} | ${cmd}`;
+                  setInput('');
+                  setHistory(prev => [...prev, fullCmd]);
+                  processCommand(fullCmd);
                 } else {
-                  setInput(cmd);
+                  setHistory(prev => [...prev, cmd]);
+                  processCommand(cmd);
                 }
                 inputRef.current?.focus();
               }}
