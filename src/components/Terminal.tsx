@@ -498,37 +498,71 @@ export function Terminal() {
       {/* Input area */}
       <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative">
         {/* Discord-style floating autocomplete */}
-        {showAutocomplete && getFilteredCommands().length > 0 && (
-          <div className="absolute bottom-full left-0 right-0 mb-1 mx-4 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
-            <div className="p-2">
-              <div className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wide">Commands</div>
-              {getFilteredCommands().map((cmd, index) => (
-                <button
-                  key={cmd.name}
-                  onClick={() => selectAutocompleteItem(cmd.name)}
-                  className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors ${
-                    index === autocompleteIndex 
-                      ? 'bg-primary/20 text-foreground' 
-                      : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
-                    cmd.type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
-                    cmd.type === 'pipe' ? 'bg-primary/20 text-primary' :
-                    cmd.type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
-                    'bg-muted text-muted-foreground'
-                  }`}>
-                    {cmd.type === 'generator' ? 'GEN' : 
-                     cmd.type === 'pipe' ? 'PIPE' : 
-                     cmd.type === 'history' ? 'HIST' : 'UTIL'}
-                  </span>
-                  <span className="font-medium text-sm">{cmd.name}</span>
-                  <span className="text-xs text-muted-foreground flex-1 truncate">{cmd.desc}</span>
-                </button>
-              ))}
+        {showAutocomplete && (() => {
+          const filteredCmds = getFilteredCommands();
+          if (filteredCmds.length === 0) return null;
+          
+          // Group commands by category
+          const groups = {
+            generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator') },
+            pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe') },
+            history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history') },
+            utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility') },
+          };
+          
+          // Build flat list for index tracking
+          let globalIndex = 0;
+          
+          return (
+            <div className="absolute bottom-full left-0 right-0 mb-1 mx-4 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+              <div className="p-2">
+                {Object.entries(groups).map(([type, group]) => {
+                  if (group.commands.length === 0) return null;
+                  
+                  const groupStartIndex = globalIndex;
+                  const groupItems = group.commands.map((cmd, i) => {
+                    const currentIndex = groupStartIndex + i;
+                    return (
+                      <button
+                        key={cmd.name}
+                        onClick={() => selectAutocompleteItem(cmd.name)}
+                        className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors ${
+                          currentIndex === autocompleteIndex 
+                            ? 'bg-primary/20 text-foreground' 
+                            : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                        }`}
+                      >
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                          type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
+                          type === 'pipe' ? 'bg-primary/20 text-primary' :
+                          type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>
+                          {type === 'generator' ? 'GEN' : 
+                           type === 'pipe' ? 'PIPE' : 
+                           type === 'history' ? 'HIST' : 'UTIL'}
+                        </span>
+                        <span className="font-medium text-sm">{cmd.name}</span>
+                        <span className="text-xs text-muted-foreground flex-1 truncate">{cmd.desc}</span>
+                      </button>
+                    );
+                  });
+                  
+                  globalIndex += group.commands.length;
+                  
+                  return (
+                    <div key={type}>
+                      <div className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wide font-semibold mt-1 first:mt-0">
+                        {group.label}
+                      </div>
+                      {groupItems}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         
         <div className="flex items-center px-4 py-3 gap-2">
           <span className="text-terminal-prompt font-bold">❯</span>
