@@ -291,6 +291,49 @@ export function Terminal() {
     return score;
   };
 
+  // Get indices of matched characters for highlighting
+  const getMatchIndices = (query: string, target: string): number[] => {
+    const q = query.toLowerCase();
+    const t = target.toLowerCase();
+    const indices: number[] = [];
+    
+    let queryIndex = 0;
+    for (let i = 0; i < t.length && queryIndex < q.length; i++) {
+      if (t[i] === q[queryIndex]) {
+        indices.push(i);
+        queryIndex++;
+      }
+    }
+    
+    return queryIndex === q.length ? indices : [];
+  };
+
+  // Render command name with highlighted matched characters
+  const renderHighlightedName = (name: string, query: string) => {
+    if (!query) return <span>{name}</span>;
+    
+    const indices = new Set(getMatchIndices(query, name));
+    
+    return (
+      <span>
+        {name.split('').map((char, i) => (
+          <span
+            key={i}
+            className={indices.has(i) ? 'text-primary font-bold' : ''}
+          >
+            {char}
+          </span>
+        ))}
+      </span>
+    );
+  };
+
+  // Get current search query for highlighting
+  const getCurrentQuery = () => {
+    const pipeIndex = input.lastIndexOf('|');
+    return pipeIndex >= 0 ? input.slice(pipeIndex + 1).trim() : input.trim();
+  };
+
   const getAllCommands = () => {
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
@@ -542,7 +585,7 @@ export function Terminal() {
                            type === 'pipe' ? 'PIPE' : 
                            type === 'history' ? 'HIST' : 'UTIL'}
                         </span>
-                        <span className="font-medium text-sm">{cmd.name}</span>
+                        <span className="font-medium text-sm">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
                         <span className="text-xs text-muted-foreground flex-1 truncate">{cmd.desc}</span>
                       </button>
                     );
