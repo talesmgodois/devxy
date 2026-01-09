@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, X, Zap, Code, FileJson, Thermometer, Copy, ClipboardPaste } from 'lucide-react';
+import { Zap, Code, FileJson, Thermometer, Copy, ClipboardPaste, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface FABAction {
@@ -22,9 +22,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
   const actions: FABAction[] = [
     {
       id: 'rndcpf',
-      icon: <Zap className="w-4 h-4" />,
+      icon: <Zap className="w-3.5 h-3.5" />,
       label: 'CPF',
-      color: 'bg-terminal-success text-terminal-success-foreground',
+      color: 'bg-terminal-success/20 text-terminal-success border-terminal-success/30',
       onClick: () => {
         onRunCommand('rndcpf');
         setIsOpen(false);
@@ -32,9 +32,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
     },
     {
       id: 'copy',
-      icon: <Copy className="w-4 h-4" />,
+      icon: <Copy className="w-3.5 h-3.5" />,
       label: 'Copy',
-      color: 'bg-primary text-primary-foreground',
+      color: 'bg-primary/20 text-primary border-primary/30',
       onClick: () => {
         onRunCommand('latest | xc');
         setIsOpen(false);
@@ -42,9 +42,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
     },
     {
       id: 'paste',
-      icon: <ClipboardPaste className="w-4 h-4" />,
+      icon: <ClipboardPaste className="w-3.5 h-3.5" />,
       label: 'Paste',
-      color: 'bg-primary text-primary-foreground',
+      color: 'bg-primary/20 text-primary border-primary/30',
       onClick: () => {
         onRunCommand('xp');
         setIsOpen(false);
@@ -52,9 +52,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
     },
     {
       id: 'json',
-      icon: <FileJson className="w-4 h-4" />,
+      icon: <FileJson className="w-3.5 h-3.5" />,
       label: 'JSON',
-      color: 'bg-purple-500 text-white',
+      color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
       onClick: () => {
         onOpenTool('json');
         setIsOpen(false);
@@ -62,9 +62,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
     },
     {
       id: 'temp',
-      icon: <Thermometer className="w-4 h-4" />,
+      icon: <Thermometer className="w-3.5 h-3.5" />,
       label: 'Temp',
-      color: 'bg-orange-500 text-white',
+      color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
       onClick: () => {
         onOpenTool('temp');
         setIsOpen(false);
@@ -72,9 +72,9 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
     },
     {
       id: 'js',
-      icon: <Code className="w-4 h-4" />,
+      icon: <Code className="w-3.5 h-3.5" />,
       label: 'JS',
-      color: 'bg-yellow-500 text-yellow-950',
+      color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
       onClick: () => {
         onOpenInterpreter('javascript');
         setIsOpen(false);
@@ -83,53 +83,55 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
   ];
 
   return (
-    <div className="fixed bottom-24 right-4 z-40 flex flex-col-reverse items-end gap-3">
-      {/* Action buttons - show when open */}
-      <div
-        className={cn(
-          'flex flex-col-reverse gap-2 transition-all duration-300',
-          isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
-        )}
-      >
-        {actions.map((action, index) => (
-          <button
-            key={action.id}
-            onClick={action.onClick}
-            className={cn(
-              'flex items-center gap-2 pl-3 pr-4 py-2 rounded-full shadow-lg transition-all duration-200',
-              action.color,
-              'hover:scale-105 active:scale-95'
-            )}
-            style={{
-              transitionDelay: isOpen ? `${index * 50}ms` : '0ms',
-            }}
-          >
-            {action.icon}
-            <span className="text-xs font-medium">{action.label}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Main FAB button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          'w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-300',
-          'bg-primary text-primary-foreground hover:bg-primary/90',
-          'active:scale-95',
-          isOpen && 'rotate-45 bg-muted text-muted-foreground'
-        )}
-      >
-        {isOpen ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
-      </button>
-
-      {/* Backdrop when open */}
+    <div className="relative">
+      {/* Popup menu - appears above the button */}
       {isOpen && (
-        <div
-          className="fixed inset-0 bg-background/60 backdrop-blur-sm -z-10"
-          onClick={() => setIsOpen(false)}
-        />
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Actions menu */}
+          <div className="absolute bottom-full right-0 mb-2 z-40 bg-card border border-border rounded-lg shadow-xl p-2 min-w-[140px]">
+            <div className="flex flex-col gap-1">
+              {actions.map((action) => (
+                <button
+                  key={action.id}
+                  onClick={action.onClick}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-md text-left transition-all duration-150 border',
+                    action.color,
+                    'hover:scale-[1.02] active:scale-[0.98]'
+                  )}
+                >
+                  {action.icon}
+                  <span className="text-xs font-medium">{action.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
+
+      {/* Compact trigger button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={cn(
+          'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-200',
+          'border border-border/50',
+          isOpen 
+            ? 'bg-muted text-foreground' 
+            : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+        )}
+        title="Quick actions"
+      >
+        {isOpen ? <X className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+      </button>
     </div>
   );
 }

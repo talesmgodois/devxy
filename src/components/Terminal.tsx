@@ -904,7 +904,7 @@ export function Terminal() {
           );
         })()}
         
-        <div className="flex items-center px-4 py-3 gap-2">
+        <div className="flex items-center px-3 md:px-4 py-3 gap-2">
           <span className="text-terminal-prompt font-bold">❯</span>
           <div className="flex-1 relative">
             {/* Ghost text layer */}
@@ -920,13 +920,37 @@ export function Terminal() {
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
               onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
-              className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10"
+              className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10 text-sm"
               placeholder="Type a command..."
               spellCheck={false}
               autoComplete="off"
             />
           </div>
-          <span className="w-2 h-5 bg-primary cursor-blink" />
+          {/* Mobile FAB inline */}
+          {isMobile && (
+            <MobileFAB
+              onRunCommand={(cmd) => {
+                setHistory(prev => [...prev, cmd]);
+                processCommand(cmd);
+              }}
+              onOpenTool={(tool) => {
+                setActiveVisualTool(tool);
+                setVisualToolArg(undefined);
+                setPanelMode('visual');
+                setShowVisualPanel(true);
+                addOutput('command', `> v.${tool}`);
+                addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+              }}
+              onOpenInterpreter={(lang) => {
+                setActiveInterpreter(lang);
+                setPanelMode('interpreter');
+                setShowVisualPanel(true);
+                addOutput('command', `> ei.${lang}`);
+                addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
+              }}
+            />
+          )}
+          {!isMobile && <span className="w-2 h-5 bg-primary cursor-blink" />}
         </div>
         
         {/* Quick commands bar - simplified for mobile */}
@@ -1013,31 +1037,6 @@ export function Terminal() {
             <PanelContent />
           </div>
         )
-      )}
-
-      {/* Mobile FAB for quick actions */}
-      {isMobile && (
-        <MobileFAB
-          onRunCommand={(cmd) => {
-            setHistory(prev => [...prev, cmd]);
-            processCommand(cmd);
-          }}
-          onOpenTool={(tool) => {
-            setActiveVisualTool(tool);
-            setVisualToolArg(undefined);
-            setPanelMode('visual');
-            setShowVisualPanel(true);
-            addOutput('command', `> v.${tool}`);
-            addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
-          }}
-          onOpenInterpreter={(lang) => {
-            setActiveInterpreter(lang);
-            setPanelMode('interpreter');
-            setShowVisualPanel(true);
-            addOutput('command', `> ei.${lang}`);
-            addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
-          }}
-        />
       )}
     </div>
   );
