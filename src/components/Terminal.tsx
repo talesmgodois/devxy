@@ -90,12 +90,14 @@ export function Terminal() {
     { id: 0, type: 'welcome', content: WELCOME_MESSAGE },
   ]);
   const [history, setHistory] = useState<string[]>([]);
+  const [resultHistory, setResultHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [tabIndex, setTabIndex] = useState(-1);
   const [tabSuggestions, setTabSuggestions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
+  const resultHistoryRef = useRef<string[]>([]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -126,6 +128,35 @@ export function Terminal() {
       return await pipeCommand.fn(pipedInput || '');
     }
     
+    // Check for latest command
+    if (trimmedCmd === 'latest') {
+      const results = resultHistoryRef.current;
+      if (results.length === 0) return 'No previous results';
+      return results[results.length - 1];
+    }
+    
+    // Check for latest(index, count) pattern
+    const latestMatch = trimmedCmd.match(/^latest\((\d+)(?:,\s*(\d+))?\)$/);
+    if (latestMatch) {
+      const results = resultHistoryRef.current;
+      if (results.length === 0) return 'No previous results';
+      
+      const index = parseInt(latestMatch[1], 10);
+      const count = latestMatch[2] ? parseInt(latestMatch[2], 10) : 1;
+      
+      // Index 0 = most recent, so we reverse the logic
+      const startFromEnd = results.length - 1 - index;
+      
+      if (startFromEnd < 0) return `Error: Index ${index} out of range (only ${results.length} results available)`;
+      
+      const selectedResults: string[] = [];
+      for (let i = 0; i < count && startFromEnd - i >= 0; i++) {
+        selectedResults.push(results[startFromEnd - i]);
+      }
+      
+      return selectedResults.join('\n');
+    }
+    
     // Check for pipe command with argument: xc(text)
     const argMatch = trimmedCmd.match(/^(\w+)\((.+)\)$/);
     if (argMatch) {
@@ -137,6 +168,11 @@ export function Terminal() {
     }
     
     return null;
+  };
+
+  const addResultToHistory = (result: string) => {
+    resultHistoryRef.current = [...resultHistoryRef.current, result];
+    setResultHistory(prev => [...prev, result]);
   };
 
   const processCommand = async (cmd: string) => {
@@ -155,7 +191,7 @@ export function Terminal() {
       const pipeHelpText = Object.entries(PIPE_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
-      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
+      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
       return;
     }
 
@@ -179,6 +215,7 @@ export function Terminal() {
       
       if (result) {
         addOutput('result', result);
+        addResultToHistory(result);
       }
       return;
     }
@@ -187,6 +224,7 @@ export function Terminal() {
     const result = await executeCommand(trimmedCmd);
     if (result !== null) {
       addOutput('result', result);
+      addResultToHistory(result);
     } else {
       addOutput('error', `Command not found: '${cmd}'. Type 'help' for available commands.`);
     }
@@ -210,7 +248,7 @@ export function Terminal() {
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
     const lower = currentPart.toLowerCase();
-    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), 'help', 'clear'];
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), 'latest', 'help', 'clear'];
     const matches = allCommands.filter(cmd => cmd.startsWith(lower));
     
     return matches.map(match => prefix + match);
