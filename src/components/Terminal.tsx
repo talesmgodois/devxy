@@ -8,13 +8,37 @@ interface OutputLine {
   timestamp?: Date;
 }
 
-const COMMANDS: Record<string, { fn: () => string; desc: string }> = {
+// Generator commands (no input required)
+const GENERATOR_COMMANDS: Record<string, { fn: () => string; desc: string }> = {
   rndcpf: { fn: generateCPF, desc: 'Generate random Brazilian CPF' },
   rndcnpj: { fn: generateCNPJ, desc: 'Generate random Brazilian CNPJ' },
   rndtituloeleitor: { fn: generateTituloEleitor, desc: 'Generate random Brazilian Titulo Eleitoral' },
   rndusername: { fn: generateUserName, desc: 'Generate random username' },
   rndnickname: { fn: generateNickName, desc: 'Generate random nickname' },
   rndemail: { fn: generateEmail, desc: 'Generate random email address' },
+};
+
+// Pipe commands (accept input from previous command or argument)
+const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; desc: string }> = {
+  xc: { 
+    fn: async (text: string) => {
+      if (!text) return 'Error: Nothing to copy';
+      await navigator.clipboard.writeText(text);
+      return `Copied to clipboard: ${text}`;
+    }, 
+    desc: 'Copy input to clipboard' 
+  },
+  xp: { 
+    fn: async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        return text || '(empty clipboard)';
+      } catch {
+        return 'Error: Unable to read clipboard (permission denied)';
+      }
+    }, 
+    desc: 'Paste from clipboard' 
+  },
 };
 
 const WELCOME_MESSAGE = `
@@ -59,29 +83,81 @@ export function Terminal() {
     setOutput(prev => [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }]);
   };
 
-  const processCommand = (cmd: string) => {
-    const trimmedCmd = cmd.trim().toLowerCase();
+  const executeCommand = async (cmdStr: string, pipedInput?: string): Promise<string | null> => {
+    const trimmedCmd = cmdStr.trim().toLowerCase();
+    
+    // Check if it's a generator command
+    const genCommand = GENERATOR_COMMANDS[trimmedCmd];
+    if (genCommand) {
+      return genCommand.fn();
+    }
+    
+    // Check if it's a pipe command
+    const pipeCommand = PIPE_COMMANDS[trimmedCmd];
+    if (pipeCommand) {
+      return await pipeCommand.fn(pipedInput || '');
+    }
+    
+    // Check for pipe command with argument: xc(text)
+    const argMatch = trimmedCmd.match(/^(\w+)\((.+)\)$/);
+    if (argMatch) {
+      const [, cmdName, arg] = argMatch;
+      const pipeCmd = PIPE_COMMANDS[cmdName];
+      if (pipeCmd) {
+        return await pipeCmd.fn(arg);
+      }
+    }
+    
+    return null;
+  };
+
+  const processCommand = async (cmd: string) => {
+    const trimmedCmd = cmd.trim();
     
     if (!trimmedCmd) return;
 
     addOutput('command', `> ${cmd}`);
 
-    if (trimmedCmd === 'help') {
-      const helpText = Object.entries(COMMANDS)
+    const lowerCmd = trimmedCmd.toLowerCase();
+
+    if (lowerCmd === 'help') {
+      const genHelpText = Object.entries(GENERATOR_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
-      addOutput('info', `Available commands:\n\n${helpText}\n\n  clear                Clear the terminal\n  help                 Show this help message`);
+      const pipeHelpText = Object.entries(PIPE_COMMANDS)
+        .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
+        .join('\n');
+      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
       return;
     }
 
-    if (trimmedCmd === 'clear') {
+    if (lowerCmd === 'clear') {
       setOutput([]);
       return;
     }
 
-    const command = COMMANDS[trimmedCmd];
-    if (command) {
-      const result = command.fn();
+    // Check for piped commands (e.g., rndCpf | xc)
+    if (trimmedCmd.includes('|')) {
+      const parts = trimmedCmd.split('|').map(p => p.trim());
+      let result: string | null = null;
+      
+      for (const part of parts) {
+        result = await executeCommand(part, result || undefined);
+        if (result === null) {
+          addOutput('error', `Command not found: '${part}'. Type 'help' for available commands.`);
+          return;
+        }
+      }
+      
+      if (result) {
+        addOutput('result', result);
+      }
+      return;
+    }
+
+    // Single command execution
+    const result = await executeCommand(trimmedCmd);
+    if (result !== null) {
       addOutput('result', result);
     } else {
       addOutput('error', `Command not found: '${cmd}'. Type 'help' for available commands.`);
@@ -99,9 +175,17 @@ export function Terminal() {
 
   const getAutocompleteSuggestions = (partial: string): string[] => {
     if (!partial) return [];
-    const lower = partial.toLowerCase();
-    const allCommands = [...Object.keys(COMMANDS), 'help', 'clear'];
-    return allCommands.filter(cmd => cmd.startsWith(lower));
+    
+    // Check if we're after a pipe
+    const pipeIndex = partial.lastIndexOf('|');
+    const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
+    const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
+    
+    const lower = currentPart.toLowerCase();
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), 'help', 'clear'];
+    const matches = allCommands.filter(cmd => cmd.startsWith(lower));
+    
+    return matches.map(match => prefix + match);
   };
 
   const getGhostText = (): string => {
@@ -276,7 +360,7 @@ export function Terminal() {
         
         {/* Quick commands bar */}
         <div className="border-t border-border/30 px-4 py-2 flex gap-2 flex-wrap">
-          {Object.keys(COMMANDS).map((cmd) => (
+          {Object.keys(GENERATOR_COMMANDS).map((cmd) => (
             <button
               key={cmd}
               onClick={() => {
@@ -284,6 +368,24 @@ export function Terminal() {
                 inputRef.current?.focus();
               }}
               className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50"
+            >
+              {cmd}
+            </button>
+          ))}
+          <span className="text-muted-foreground/50">|</span>
+          {Object.keys(PIPE_COMMANDS).map((cmd) => (
+            <button
+              key={cmd}
+              onClick={() => {
+                const currentInput = input.trim();
+                if (currentInput && !currentInput.includes('|')) {
+                  setInput(`${currentInput} | ${cmd}`);
+                } else {
+                  setInput(cmd);
+                }
+                inputRef.current?.focus();
+              }}
+              className="text-xs px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary transition-colors border border-primary/30 hover:border-primary/50"
             >
               {cmd}
             </button>
