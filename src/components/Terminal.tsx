@@ -728,7 +728,10 @@ export function Terminal() {
 
       {/* Visual Tools Panel */}
       {showVisualPanel && (
-        <div className="w-1/2 border-l border-border/50 flex flex-col bg-card/30">
+        <div 
+          className="w-1/2 border-l border-border/50 flex flex-col bg-card/30"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Visual panel header */}
           <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
             <div className="flex items-center gap-2">
