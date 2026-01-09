@@ -95,9 +95,36 @@ export function Terminal() {
     }
   };
 
+  const getAutocompleteSuggestions = (partial: string): string[] => {
+    if (!partial) return [];
+    const lower = partial.toLowerCase();
+    const allCommands = [...Object.keys(COMMANDS), 'help', 'clear'];
+    return allCommands.filter(cmd => cmd.startsWith(lower));
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSubmit();
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      const suggestions = getAutocompleteSuggestions(input.trim());
+      if (suggestions.length === 1) {
+        setInput(suggestions[0]);
+      } else if (suggestions.length > 1) {
+        // Find common prefix
+        const commonPrefix = suggestions.reduce((prefix, cmd) => {
+          while (cmd.indexOf(prefix) !== 0) {
+            prefix = prefix.slice(0, -1);
+          }
+          return prefix;
+        }, suggestions[0]);
+        
+        if (commonPrefix.length > input.trim().length) {
+          setInput(commonPrefix);
+        } else {
+          addOutput('info', `Suggestions: ${suggestions.join('  ')}`);
+        }
+      }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (history.length > 0) {
@@ -216,7 +243,7 @@ export function Terminal() {
 
       {/* Status bar */}
       <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
-        <span>↑↓ Navigate history • Ctrl+L Clear • Enter Execute</span>
+        <span>Tab Autocomplete • ↑↓ History • Ctrl+L Clear • Enter Execute</span>
         <span>v1.0.0</span>
       </footer>
     </div>
