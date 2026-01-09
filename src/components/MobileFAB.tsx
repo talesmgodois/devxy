@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Zap, Code, FileJson, Thermometer, Copy, ClipboardPaste, Sparkles, X } from 'lucide-react';
+import { Zap, Code, FileJson, Thermometer, Hash, Mail, User, AtSign, FileText, Sparkles, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
 
 interface FABAction {
   id: string;
   icon: React.ReactNode;
   label: string;
-  color: string;
+  category: 'generator' | 'visual' | 'interpreter';
   onClick: () => void;
 }
 
@@ -20,118 +21,202 @@ export function MobileFAB({ onRunCommand, onOpenTool, onOpenInterpreter }: Mobil
   const [isOpen, setIsOpen] = useState(false);
 
   const actions: FABAction[] = [
+    // Generator commands
     {
       id: 'r.cpf',
-      icon: <Zap className="w-3.5 h-3.5" />,
+      icon: <Hash className="w-4 h-4" />,
       label: 'CPF',
-      color: 'bg-terminal-success/20 text-terminal-success border-terminal-success/30',
+      category: 'generator',
       onClick: () => {
         onRunCommand('r.cpf');
         setIsOpen(false);
       },
     },
     {
-      id: 'copy',
-      icon: <Copy className="w-3.5 h-3.5" />,
-      label: 'Copy',
-      color: 'bg-primary/20 text-primary border-primary/30',
+      id: 'r.cnpj',
+      icon: <Hash className="w-4 h-4" />,
+      label: 'CNPJ',
+      category: 'generator',
       onClick: () => {
-        onRunCommand('latest | xc');
+        onRunCommand('r.cnpj');
         setIsOpen(false);
       },
     },
     {
-      id: 'paste',
-      icon: <ClipboardPaste className="w-3.5 h-3.5" />,
-      label: 'Paste',
-      color: 'bg-primary/20 text-primary border-primary/30',
+      id: 'r.titulo',
+      icon: <FileText className="w-4 h-4" />,
+      label: 'Titulo',
+      category: 'generator',
       onClick: () => {
-        onRunCommand('xp');
+        onRunCommand('r.titulo');
         setIsOpen(false);
       },
     },
     {
-      id: 'json',
-      icon: <FileJson className="w-3.5 h-3.5" />,
+      id: 'r.user',
+      icon: <User className="w-4 h-4" />,
+      label: 'Username',
+      category: 'generator',
+      onClick: () => {
+        onRunCommand('r.user');
+        setIsOpen(false);
+      },
+    },
+    {
+      id: 'r.nick',
+      icon: <AtSign className="w-4 h-4" />,
+      label: 'Nickname',
+      category: 'generator',
+      onClick: () => {
+        onRunCommand('r.nick');
+        setIsOpen(false);
+      },
+    },
+    {
+      id: 'r.email',
+      icon: <Mail className="w-4 h-4" />,
+      label: 'Email',
+      category: 'generator',
+      onClick: () => {
+        onRunCommand('r.email');
+        setIsOpen(false);
+      },
+    },
+    // Visual tools
+    {
+      id: 'v.json',
+      icon: <FileJson className="w-4 h-4" />,
       label: 'JSON',
-      color: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+      category: 'visual',
       onClick: () => {
         onOpenTool('json');
         setIsOpen(false);
       },
     },
     {
-      id: 'temp',
-      icon: <Thermometer className="w-3.5 h-3.5" />,
-      label: 'Temp',
-      color: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+      id: 'v.temp',
+      icon: <Thermometer className="w-4 h-4" />,
+      label: 'Temperature',
+      category: 'visual',
       onClick: () => {
         onOpenTool('temp');
         setIsOpen(false);
       },
     },
     {
-      id: 'js',
-      icon: <Code className="w-3.5 h-3.5" />,
-      label: 'JS',
-      color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
+      id: 'v.curl',
+      icon: <Zap className="w-4 h-4" />,
+      label: 'cURL',
+      category: 'visual',
+      onClick: () => {
+        onOpenTool('curl');
+        setIsOpen(false);
+      },
+    },
+    {
+      id: 'v.csv',
+      icon: <FileText className="w-4 h-4" />,
+      label: 'CSV',
+      category: 'visual',
+      onClick: () => {
+        onOpenTool('csv');
+        setIsOpen(false);
+      },
+    },
+    // Interpreters
+    {
+      id: 'ei.javascript',
+      icon: <Code className="w-4 h-4" />,
+      label: 'JavaScript',
+      category: 'interpreter',
       onClick: () => {
         onOpenInterpreter('javascript');
         setIsOpen(false);
       },
     },
+    {
+      id: 'ei.python',
+      icon: <Code className="w-4 h-4" />,
+      label: 'Python',
+      category: 'interpreter',
+      onClick: () => {
+        onOpenInterpreter('python');
+        setIsOpen(false);
+      },
+    },
   ];
 
-  return (
-    <div className="relative">
-      {/* Popup menu - appears above the button */}
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-30"
-            onClick={() => setIsOpen(false)}
-          />
-          
-          {/* Actions menu */}
-          <div className="absolute bottom-full right-0 mb-2 z-40 bg-card border border-border rounded-lg shadow-xl p-2 min-w-[140px]">
-            <div className="flex flex-col gap-1">
-              {actions.map((action) => (
-                <button
-                  key={action.id}
-                  onClick={action.onClick}
-                  className={cn(
-                    'flex items-center gap-2 px-3 py-2 rounded-md text-left transition-all duration-150 border',
-                    action.color,
-                    'hover:scale-[1.02] active:scale-[0.98]'
-                  )}
-                >
-                  {action.icon}
-                  <span className="text-xs font-medium">{action.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+  const generators = actions.filter(a => a.category === 'generator');
+  const visuals = actions.filter(a => a.category === 'visual');
+  const interpreters = actions.filter(a => a.category === 'interpreter');
 
+  const getCategoryColor = (category: FABAction['category']) => {
+    switch (category) {
+      case 'generator':
+        return 'bg-terminal-success/10 text-terminal-success border-terminal-success/20 hover:bg-terminal-success/20';
+      case 'visual':
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20';
+      case 'interpreter':
+        return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20 hover:bg-yellow-500/20';
+    }
+  };
+
+  const renderActionGrid = (items: FABAction[], title: string) => (
+    <div className="mb-4">
+      <h3 className="text-xs font-medium text-muted-foreground mb-2 px-1">{title}</h3>
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((action) => (
+          <button
+            key={action.id}
+            onClick={action.onClick}
+            className={cn(
+              'flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border transition-all duration-150',
+              getCategoryColor(action.category),
+              'active:scale-[0.97]'
+            )}
+          >
+            {action.icon}
+            <span className="text-xs font-medium">{action.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <>
       {/* Compact trigger button */}
       <button
         onClick={(e) => {
           e.stopPropagation();
-          setIsOpen(!isOpen);
+          setIsOpen(true);
         }}
         className={cn(
           'w-8 h-8 rounded-md flex items-center justify-center transition-all duration-200',
           'border border-border/50',
-          isOpen 
-            ? 'bg-muted text-foreground' 
-            : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+          'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
         )}
         title="Quick actions"
       >
-        {isOpen ? <X className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+        <Sparkles className="w-4 h-4" />
       </button>
-    </div>
+
+      {/* Bottom drawer */}
+      <Drawer open={isOpen} onOpenChange={setIsOpen}>
+        <DrawerContent className="bg-background border-border">
+          <DrawerHeader className="pb-2">
+            <DrawerTitle className="text-base flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              Quick Commands
+            </DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6 max-h-[60vh] overflow-y-auto">
+            {renderActionGrid(generators, 'Generators')}
+            {renderActionGrid(visuals, 'Visual Tools')}
+            {renderActionGrid(interpreters, 'Interpreters')}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </>
   );
 }
