@@ -762,6 +762,12 @@ export function Terminal() {
           ref={visualPanelRef}
           className="w-1/2 border-l border-border/50 flex flex-col bg-card/30"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              inputRef.current?.focus();
+            }
+          }}
         >
           {/* Visual panel header */}
           <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
