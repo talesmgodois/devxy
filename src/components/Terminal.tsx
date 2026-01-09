@@ -909,14 +909,29 @@ export function Terminal() {
           const filteredCmds = getFilteredCommands();
           if (filteredCmds.length === 0) return null;
           
+          // Get recent unique commands (last 5, excluding duplicates)
+          const recentCommands: typeof filteredCmds = [];
+          const seenRecent = new Set<string>();
+          for (let i = history.length - 1; i >= 0 && recentCommands.length < 5; i--) {
+            const cmd = history[i].toLowerCase().split(/\s+/)[0]; // Get base command
+            if (!seenRecent.has(cmd)) {
+              const matchingCmd = filteredCmds.find(c => c.name.toLowerCase() === cmd);
+              if (matchingCmd) {
+                recentCommands.push({ ...matchingCmd, type: 'recent' as any });
+                seenRecent.add(cmd);
+              }
+            }
+          }
+          
           // Group commands by category
           const groups = {
-            generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator') },
-            pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe') },
-            visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual') },
-            interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter') },
-            history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history') },
-            utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility') },
+            recent: { label: 'Recent', commands: recentCommands },
+            generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator' && !seenRecent.has(c.name.toLowerCase())) },
+            pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe' && !seenRecent.has(c.name.toLowerCase())) },
+            visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual' && !seenRecent.has(c.name.toLowerCase())) },
+            interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter' && !seenRecent.has(c.name.toLowerCase())) },
+            history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history' && !seenRecent.has(c.name.toLowerCase())) },
+            utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility' && !seenRecent.has(c.name.toLowerCase())) },
           };
           
           // Build flat list for index tracking
@@ -947,6 +962,7 @@ export function Terminal() {
                         }`}
                       >
                         <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                          type === 'recent' ? 'bg-blue-500/20 text-blue-400' :
                           type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
                           type === 'pipe' ? 'bg-primary/20 text-primary' :
                           type === 'visual' ? 'bg-purple-500/20 text-purple-400' :
@@ -954,7 +970,8 @@ export function Terminal() {
                           type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
                           'bg-muted text-muted-foreground'
                         }`}>
-                          {type === 'generator' ? 'GEN' : 
+                          {type === 'recent' ? '★' :
+                           type === 'generator' ? 'GEN' : 
                            type === 'pipe' ? 'PIPE' : 
                            type === 'visual' ? 'VIS' :
                            type === 'interpreter' ? 'LANG' :
