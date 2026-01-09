@@ -102,6 +102,20 @@ export function Terminal() {
     return allCommands.filter(cmd => cmd.startsWith(lower));
   };
 
+  const getGhostText = (): string => {
+    const trimmed = input.trim();
+    if (!trimmed) return '';
+    const suggestions = getAutocompleteSuggestions(trimmed);
+    if (suggestions.length === 1) {
+      return suggestions[0].slice(trimmed.length);
+    }
+    // If multiple suggestions, show the first one's completion
+    if (suggestions.length > 1) {
+      return suggestions[0].slice(trimmed.length);
+    }
+    return '';
+  };
+
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleSubmit();
@@ -210,17 +224,25 @@ export function Terminal() {
       <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm">
         <div className="flex items-center px-4 py-3 gap-2">
           <span className="text-terminal-prompt font-bold">❯</span>
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="flex-1 bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50"
-            placeholder="Type a command..."
-            spellCheck={false}
-            autoComplete="off"
-          />
+          <div className="flex-1 relative">
+            {/* Ghost text layer */}
+            <div className="absolute inset-0 pointer-events-none flex items-center">
+              <span className="text-transparent">{input}</span>
+              <span className="text-muted-foreground/40">{getGhostText()}</span>
+            </div>
+            {/* Actual input */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10"
+              placeholder="Type a command..."
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
           <span className="w-2 h-5 bg-primary cursor-blink" />
         </div>
         
