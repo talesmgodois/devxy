@@ -257,6 +257,40 @@ export function Terminal() {
     }
   };
 
+  // Fuzzy match function - returns score (higher = better) or -1 if no match
+  const fuzzyMatch = (query: string, target: string): number => {
+    const q = query.toLowerCase();
+    const t = target.toLowerCase();
+    
+    // Exact match - highest priority
+    if (t === q) return 100;
+    
+    // Prefix match - high priority
+    if (t.startsWith(q)) return 90 + (q.length / t.length) * 10;
+    
+    // Fuzzy match - check if all chars appear in order
+    let queryIndex = 0;
+    let score = 0;
+    let lastMatchIndex = -1;
+    
+    for (let i = 0; i < t.length && queryIndex < q.length; i++) {
+      if (t[i] === q[queryIndex]) {
+        // Bonus for consecutive characters
+        if (lastMatchIndex === i - 1) score += 5;
+        // Bonus for matching at word boundaries
+        if (i === 0 || !t[i - 1].match(/[a-z]/i)) score += 3;
+        score += 1;
+        lastMatchIndex = i;
+        queryIndex++;
+      }
+    }
+    
+    // All query characters must be found
+    if (queryIndex !== q.length) return -1;
+    
+    return score;
+  };
+
   const getAllCommands = () => {
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
@@ -276,8 +310,11 @@ export function Terminal() {
     
     if (!currentPart) return allCommands;
     
-    const lower = currentPart.toLowerCase();
-    return allCommands.filter(cmd => cmd.name.includes(lower));
+    // Use fuzzy matching and sort by score
+    return allCommands
+      .map(cmd => ({ ...cmd, score: fuzzyMatch(currentPart, cmd.name) }))
+      .filter(cmd => cmd.score >= 0)
+      .sort((a, b) => b.score - a.score);
   };
 
   const getAutocompleteSuggestions = (partial: string): string[] => {
@@ -288,11 +325,15 @@ export function Terminal() {
     const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
-    const lower = currentPart.toLowerCase();
     const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), 'latest', 'help', 'clear'];
-    const matches = allCommands.filter(cmd => cmd.startsWith(lower));
     
-    return matches.map(match => prefix + match);
+    // Use fuzzy matching and sort by score
+    const matches = allCommands
+      .map(cmd => ({ name: cmd, score: fuzzyMatch(currentPart, cmd) }))
+      .filter(cmd => cmd.score >= 0)
+      .sort((a, b) => b.score - a.score);
+    
+    return matches.map(match => prefix + match.name);
   };
 
   const getGhostText = (): string => {
