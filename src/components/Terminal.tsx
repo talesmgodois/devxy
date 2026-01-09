@@ -5,6 +5,7 @@ import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
 import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
+import { MobileFAB } from './MobileFAB';
 
 interface OutputLine {
   id: number;
@@ -1013,6 +1014,31 @@ export function Terminal() {
             <PanelContent />
           </div>
         )
+      )}
+
+      {/* Mobile FAB for quick actions */}
+      {isMobile && (
+        <MobileFAB
+          onRunCommand={(cmd) => {
+            setHistory(prev => [...prev, cmd]);
+            processCommand(cmd);
+          }}
+          onOpenTool={(tool) => {
+            setActiveVisualTool(tool);
+            setVisualToolArg(undefined);
+            setPanelMode('visual');
+            setShowVisualPanel(true);
+            addOutput('command', `> v.${tool}`);
+            addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+          }}
+          onOpenInterpreter={(lang) => {
+            setActiveInterpreter(lang);
+            setPanelMode('interpreter');
+            setShowVisualPanel(true);
+            addOutput('command', `> ei.${lang}`);
+            addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
+          }}
+        />
       )}
     </div>
   );
