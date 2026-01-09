@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+import { getEmbeddedToolsStatic } from '@/hooks/use-embedded-tools';
 
 interface HelpSection {
   title: string;
@@ -23,70 +24,90 @@ export function HelpVisualTool() {
     });
   };
 
-  const sections: HelpSection[] = [
-    {
-      title: 'generators',
-      icon: '⚡',
-      items: [
-        { name: 'r.cpf', desc: 'Generate random Brazilian CPF [-f formatted] [-n count]' },
-        { name: 'r.cnpj', desc: 'Generate random Brazilian CNPJ [-f formatted] [-n count]' },
-        { name: 'r.titulo', desc: 'Generate random Brazilian Titulo Eleitoral [-f formatted] [-n count]' },
-        { name: 'r.user', desc: 'Generate random username [-n count]' },
-        { name: 'r.nick', desc: 'Generate random nickname [-n count]' },
-        { name: 'r.email', desc: 'Generate random email address [-n count]' },
-      ],
-    },
-    {
-      title: 'pipes',
-      icon: '🔧',
-      items: [
-        { name: 'xc', desc: 'Copy input to clipboard' },
-        { name: 'xp', desc: 'Paste from clipboard' },
-        { name: 'xl', desc: 'Convert to lowercase' },
-        { name: 'xu', desc: 'Convert to uppercase' },
-        { name: 'xt', desc: 'Trim whitespace' },
-        { name: 'xr', desc: 'Reverse string' },
-      ],
-    },
-    {
-      title: 'visual tools',
-      icon: '📺',
-      items: [
-        { name: 'v.temp', desc: 'Temperature converter (F/C/K)' },
-        { name: 'v.csv', desc: 'JSON to CSV converter' },
-        { name: 'v.curl', desc: 'cURL request generator' },
-        { name: 'v.json', desc: 'JSON formatter & validator' },
-        { name: 'v.help', desc: 'This help reference' },
-      ],
-    },
-    {
-      title: 'interpreters',
-      icon: '🖥️',
-      items: [
-        { name: 'ei.js', desc: 'JavaScript interpreter' },
-        { name: 'ei.python', desc: 'Python interpreter' },
-      ],
-    },
-    {
-      title: 'history',
-      icon: '📋',
-      items: [
-        { name: 'latest', desc: 'Get last command result' },
-        { name: 'latest(i)', desc: 'Get result at index i (0=latest)' },
-        { name: 'latest(i,n)', desc: 'Get n results starting from index i' },
-        { name: 'recent', desc: 'Show last 20 executed commands with timestamps' },
-        { name: 'clearhistory', desc: 'Clear stored command history' },
-      ],
-    },
-    {
-      title: 'utility',
-      icon: '🛠️',
-      items: [
-        { name: 'clear', desc: 'Clear the terminal' },
-        { name: 'help', desc: 'Show help message in terminal' },
-      ],
-    },
-  ];
+  // Get embedded tools dynamically
+  const embeddedTools = getEmbeddedToolsStatic();
+
+  const sections: HelpSection[] = useMemo(() => {
+    const baseSections: HelpSection[] = [
+      {
+        title: 'generators',
+        icon: '⚡',
+        items: [
+          { name: 'r.cpf', desc: 'Generate random Brazilian CPF [-f formatted] [-n count]' },
+          { name: 'r.cnpj', desc: 'Generate random Brazilian CNPJ [-f formatted] [-n count]' },
+          { name: 'r.titulo', desc: 'Generate random Brazilian Titulo Eleitoral [-f formatted] [-n count]' },
+          { name: 'r.user', desc: 'Generate random username [-n count]' },
+          { name: 'r.nick', desc: 'Generate random nickname [-n count]' },
+          { name: 'r.email', desc: 'Generate random email address [-n count]' },
+        ],
+      },
+      {
+        title: 'pipes',
+        icon: '🔧',
+        items: [
+          { name: 'xc', desc: 'Copy input to clipboard' },
+          { name: 'xp', desc: 'Paste from clipboard' },
+          { name: 'xl', desc: 'Convert to lowercase' },
+          { name: 'xu', desc: 'Convert to uppercase' },
+          { name: 'xt', desc: 'Trim whitespace' },
+          { name: 'xr', desc: 'Reverse string' },
+        ],
+      },
+      {
+        title: 'visual tools',
+        icon: '📺',
+        items: [
+          { name: 'v.temp', desc: 'Temperature converter (F/C/K)' },
+          { name: 'v.csv', desc: 'JSON to CSV converter' },
+          { name: 'v.curl', desc: 'cURL request generator' },
+          { name: 'v.json', desc: 'JSON formatter & validator' },
+          { name: 'v.embeds', desc: 'Manage embedded URL tools' },
+          { name: 'v.help', desc: 'This help reference' },
+        ],
+      },
+      {
+        title: 'interpreters',
+        icon: '🖥️',
+        items: [
+          { name: 'ei.js', desc: 'JavaScript interpreter' },
+          { name: 'ei.python', desc: 'Python interpreter' },
+        ],
+      },
+      {
+        title: 'history',
+        icon: '📋',
+        items: [
+          { name: 'latest', desc: 'Get last command result' },
+          { name: 'latest(i)', desc: 'Get result at index i (0=latest)' },
+          { name: 'latest(i,n)', desc: 'Get n results starting from index i' },
+          { name: 'recent', desc: 'Show last 20 executed commands with timestamps' },
+          { name: 'clearhistory', desc: 'Clear stored command history' },
+        ],
+      },
+      {
+        title: 'utility',
+        icon: '🛠️',
+        items: [
+          { name: 'clear', desc: 'Clear the terminal' },
+          { name: 'help', desc: 'Show help message in terminal' },
+        ],
+      },
+    ];
+
+    // Add embedded tools section if there are any
+    if (embeddedTools.length > 0) {
+      baseSections.splice(3, 0, {
+        title: 'embedded tools',
+        icon: '🔗',
+        items: embeddedTools.map(tool => ({
+          name: `ve.${tool.id}`,
+          desc: tool.description || tool.name,
+        })),
+      });
+    }
+
+    return baseSections;
+  }, [embeddedTools]);
 
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return sections;
