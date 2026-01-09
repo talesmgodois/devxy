@@ -801,7 +801,7 @@ export function Terminal() {
             <span className="text-sm font-medium text-foreground">
               {panelMode === 'interpreter' ? 'Interpreter' : panelMode === 'embed' ? 'Embedded Tool' : 'Visual Tools'}
             </span>
-            {panelMode !== 'embed' && renderToolSelector()}
+            {renderToolSelector()}
           </div>
           <button
             onClick={(e) => {
@@ -923,11 +923,15 @@ export function Terminal() {
     </div>
   );
 
-  // Tool selector dropdown - unified for both visual tools and interpreters
+  // Tool selector dropdown - unified for visual tools, embedded tools, and interpreters
   const renderToolSelector = () => {
     const currentValue = panelMode === 'interpreter' 
       ? (activeInterpreter ? `ei.${activeInterpreter}` : '')
-      : (activeVisualTool ? `v.${activeVisualTool}` : '');
+      : panelMode === 'embed'
+        ? (activeEmbeddedTool ? `ve.${activeEmbeddedTool.id}` : '')
+        : (activeVisualTool ? `v.${activeVisualTool}` : '');
+
+    const embeddedToolsList = getEmbeddedToolsStatic();
 
     return (
       <select
@@ -944,6 +948,15 @@ export function Terminal() {
               addOutput('command', `> ei.${lang}`);
               addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
             }
+          } else if (value.startsWith('ve.')) {
+            const toolId = value.slice(3);
+            const embeddedTool = embeddedToolsList.find(t => t.id === toolId);
+            if (embeddedTool) {
+              setActiveEmbeddedTool(embeddedTool);
+              setPanelMode('embed');
+              addOutput('command', `> ve.${toolId}`);
+              addOutput('info', `🔗 Opening embedded tool: ${embeddedTool.name}${embeddedTool.description ? ` - ${embeddedTool.description}` : ''}`);
+            }
           } else if (value.startsWith('v.')) {
             const tool = value.slice(2);
             if (VISUAL_TOOLS[tool]) {
@@ -959,7 +972,9 @@ export function Terminal() {
         className={`text-xs px-2 py-1 rounded border outline-none cursor-pointer transition-colors ${
           panelMode === 'interpreter'
             ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
-            : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
+            : panelMode === 'embed'
+              ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30'
+              : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
         }`}
       >
         {!currentValue && <option value="">Select...</option>}
@@ -970,6 +985,15 @@ export function Terminal() {
             </option>
           ))}
         </optgroup>
+        {embeddedToolsList.length > 0 && (
+          <optgroup label="Embedded Tools" className="bg-card text-foreground">
+            {embeddedToolsList.map((tool) => (
+              <option key={`ve.${tool.id}`} value={`ve.${tool.id}`} className="bg-card text-foreground">
+                🔗 ve.{tool.id}
+              </option>
+            ))}
+          </optgroup>
+        )}
         <optgroup label="Interpreters" className="bg-card text-foreground">
           {Object.entries(EMBEDDED_INTERPRETERS)
             .filter(([key], _, arr) => {
