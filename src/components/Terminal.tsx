@@ -807,10 +807,34 @@ export function Terminal() {
               <span className="text-sm font-medium text-foreground">
                 {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
               </span>
-              {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400">
-                  {EMBEDDED_INTERPRETERS[activeInterpreter].icon} {activeInterpreter}
-                </span>
+              {panelMode === 'interpreter' && (
+                <select
+                  value={activeInterpreter || ''}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    const lang = e.target.value;
+                    if (lang && EMBEDDED_INTERPRETERS[lang]) {
+                      setActiveInterpreter(lang);
+                      addOutput('command', `> ei.${lang}`);
+                      addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 outline-none cursor-pointer hover:bg-yellow-500/30 transition-colors"
+                >
+                  {!activeInterpreter && <option value="">Select...</option>}
+                  {Object.entries(EMBEDDED_INTERPRETERS)
+                    .filter(([key], _, arr) => {
+                      // Filter out 'js' alias if 'javascript' exists to avoid duplicates
+                      if (key === 'js' && arr.some(([k]) => k === 'javascript')) return false;
+                      return true;
+                    })
+                    .map(([key, interp]) => (
+                      <option key={key} value={key} className="bg-card text-foreground">
+                        {interp.icon} ei.{key}
+                      </option>
+                    ))}
+                </select>
               )}
               {panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
