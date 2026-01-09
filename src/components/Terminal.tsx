@@ -144,7 +144,7 @@ export function Terminal() {
   const isMobile = useIsMobile();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>([]);
   const [resultHistory, setResultHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
@@ -331,7 +331,35 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
+      return;
+    }
+
+    // Recent command - show last 20 commands with timestamps
+    if (lowerCmd === 'recent') {
+      if (history.length === 0) {
+        addOutput('info', 'No commands in history yet.');
+        return;
+      }
+      const recentCmds = history.slice(-20).reverse();
+      const formatTime = (date: Date) => {
+        const now = new Date();
+        const diff = now.getTime() - date.getTime();
+        const seconds = Math.floor(diff / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        
+        if (seconds < 60) return `${seconds}s ago`;
+        if (minutes < 60) return `${minutes}m ago`;
+        if (hours < 24) return `${hours}h ago`;
+        return date.toLocaleString();
+      };
+      
+      const output = recentCmds
+        .map((entry, i) => `  ${String(i + 1).padStart(2)}. ${formatTime(entry.timestamp).padEnd(12)} ${entry.cmd}`)
+        .join('\n');
+      
+      addOutput('info', `📋 Recent commands (newest first):\n\n${output}`);
       return;
     }
 
@@ -407,7 +435,7 @@ export function Terminal() {
 
   const handleSubmit = () => {
     if (input.trim()) {
-      setHistory(prev => [...prev, input]);
+      setHistory(prev => [...prev, { cmd: input, timestamp: new Date() }]);
       setHistoryIndex(-1);
       processCommand(input);
       setInput('');
@@ -498,6 +526,7 @@ export function Terminal() {
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
       ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
+      { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
       { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
     ];
@@ -621,7 +650,7 @@ export function Terminal() {
         if (history.length > 0) {
           const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
           setHistoryIndex(newIndex);
-          setInput(history[newIndex]);
+          setInput(history[newIndex].cmd);
         }
       }
     } else if (e.key === 'ArrowDown') {
@@ -643,7 +672,7 @@ export function Terminal() {
             setInput('');
           } else {
             setHistoryIndex(newIndex);
-            setInput(history[newIndex]);
+            setInput(history[newIndex].cmd);
           }
         }
       }
@@ -913,7 +942,7 @@ export function Terminal() {
           const recentCommands: typeof filteredCmds = [];
           const seenRecent = new Set<string>();
           for (let i = history.length - 1; i >= 0 && recentCommands.length < 5; i--) {
-            const cmd = history[i].toLowerCase().split(/\s+/)[0]; // Get base command
+            const cmd = history[i].cmd.toLowerCase().split(/\s+/)[0]; // Get base command
             if (!seenRecent.has(cmd)) {
               const matchingCmd = filteredCmds.find(c => c.name.toLowerCase() === cmd);
               if (matchingCmd) {
@@ -1025,7 +1054,7 @@ export function Terminal() {
           {isMobile && (
             <MobileFAB
               onRunCommand={(cmd) => {
-                setHistory(prev => [...prev, cmd]);
+                setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
                 processCommand(cmd);
               }}
               onOpenTool={(tool) => {
@@ -1054,7 +1083,7 @@ export function Terminal() {
             <button
               key={cmd}
               onClick={() => {
-                setHistory(prev => [...prev, cmd]);
+                setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
                 processCommand(cmd);
                 inputRef.current?.focus();
               }}
@@ -1072,10 +1101,10 @@ export function Terminal() {
                 if (currentInput && !currentInput.includes('|')) {
                   const fullCmd = `${currentInput} | ${cmd}`;
                   setInput('');
-                  setHistory(prev => [...prev, fullCmd]);
+                  setHistory(prev => [...prev, { cmd: fullCmd, timestamp: new Date() }]);
                   processCommand(fullCmd);
                 } else {
-                  setHistory(prev => [...prev, cmd]);
+                  setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
                   processCommand(cmd);
                 }
                 inputRef.current?.focus();
