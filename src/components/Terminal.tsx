@@ -2,7 +2,9 @@ import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
 import { VISUAL_TOOLS } from './visual-tools';
 import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
-import { LayoutGrid, X, Terminal as TerminalIcon } from 'lucide-react';
+import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 
 interface OutputLine {
   id: number;
@@ -72,7 +74,7 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
   },
 };
 
-const WELCOME_MESSAGE = `
+const WELCOME_MESSAGE_DESKTOP = `
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
 ║   ██████╗ ███████╗██╗   ██╗██╗  ██╗██╗   ██╗                 ║
@@ -87,11 +89,16 @@ const WELCOME_MESSAGE = `
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝`;
 
+const WELCOME_MESSAGE_MOBILE = `
+┌─────────────────────────┐
+│  DEVXY Terminal v1.0    │
+│  Type 'help' for cmds   │
+└─────────────────────────┘`;
+
 export function Terminal() {
+  const isMobile = useIsMobile();
   const [input, setInput] = useState('');
-  const [output, setOutput] = useState<OutputLine[]>([
-    { id: 0, type: 'welcome', content: WELCOME_MESSAGE },
-  ]);
+  const [output, setOutput] = useState<OutputLine[]>([]);
   const [history, setHistory] = useState<string[]>([]);
   const [resultHistory, setResultHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -107,6 +114,16 @@ export function Terminal() {
   const visualPanelRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
   const resultHistoryRef = useRef<string[]>([]);
+  const hasInitialized = useRef(false);
+
+  // Set initial welcome message based on screen size
+  useEffect(() => {
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      const welcomeMessage = isMobile ? WELCOME_MESSAGE_MOBILE : WELCOME_MESSAGE_DESKTOP;
+      setOutput([{ id: 0, type: 'welcome', content: welcomeMessage }]);
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -584,6 +601,179 @@ export function Terminal() {
     }
   };
 
+  // Panel content component to reuse in both desktop panel and mobile drawer
+  const PanelContent = () => (
+    <div 
+      ref={!isMobile ? visualPanelRef : undefined}
+      className="flex flex-col h-full"
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          inputRef.current?.focus();
+        }
+      }}
+    >
+      {/* Panel header - only show on desktop, mobile uses drawer header */}
+      {!isMobile && (
+        <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
+          <div className="flex items-center gap-2">
+            {panelMode === 'interpreter' ? (
+              <TerminalIcon className="w-4 h-4 text-yellow-400" />
+            ) : (
+              <LayoutGrid className="w-4 h-4 text-primary" />
+            )}
+            <span className="text-sm font-medium text-foreground">
+              {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
+            </span>
+            {renderToolSelector()}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowVisualPanel(false);
+            }}
+            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Panel body */}
+      <div className="flex-1 overflow-auto">
+        {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
+          (() => {
+            const InterpreterComponent = EMBEDDED_INTERPRETERS[activeInterpreter].component;
+            return <InterpreterComponent />;
+          })()
+        ) : panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] ? (
+          (() => {
+            const ToolComponent = VISUAL_TOOLS[activeVisualTool].component;
+            return <ToolComponent initialValue={visualToolArg} />;
+          })()
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <LayoutGrid className="w-12 h-12 text-muted-foreground/30 mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">No Tool Active</h3>
+            <p className="text-sm text-muted-foreground/70 mb-6">
+              Run a command to open a tool here
+            </p>
+            <div className="space-y-4 w-full max-w-xs">
+              <div>
+                <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Visual Tools</h4>
+                <div className="space-y-2">
+                  {Object.entries(VISUAL_TOOLS).map(([name, tool]) => (
+                    <button
+                      key={name}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveVisualTool(name);
+                        setVisualToolArg(undefined);
+                        setPanelMode('visual');
+                        addOutput('command', `> v.${name}`);
+                        addOutput('info', `📺 Opening visual tool: ${tool.icon} ${tool.description}`);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left transition-colors"
+                    >
+                      <span className="text-xl">{tool.icon}</span>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">v.{name}</div>
+                        <div className="text-xs text-muted-foreground">{tool.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Interpreters</h4>
+                <div className="space-y-2">
+                  {Object.entries(EMBEDDED_INTERPRETERS).map(([name, interp]) => (
+                    <button
+                      key={name}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveInterpreter(name);
+                        setPanelMode('interpreter');
+                        addOutput('command', `> ei.${name}`);
+                        addOutput('info', `🖥️ Opening interpreter: ${interp.icon} ${interp.description}`);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-left transition-colors"
+                    >
+                      <span className="text-xl">{interp.icon}</span>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">ei.{name}</div>
+                        <div className="text-xs text-muted-foreground">{interp.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // Tool selector dropdown
+  const renderToolSelector = () => {
+    if (panelMode === 'interpreter') {
+      return (
+        <select
+          value={activeInterpreter || ''}
+          onChange={(e) => {
+            e.stopPropagation();
+            const lang = e.target.value;
+            if (lang && EMBEDDED_INTERPRETERS[lang]) {
+              setActiveInterpreter(lang);
+              addOutput('command', `> ei.${lang}`);
+              addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 outline-none cursor-pointer hover:bg-yellow-500/30 transition-colors"
+        >
+          {!activeInterpreter && <option value="">Select...</option>}
+          {Object.entries(EMBEDDED_INTERPRETERS)
+            .filter(([key], _, arr) => {
+              if (key === 'js' && arr.some(([k]) => k === 'javascript')) return false;
+              return true;
+            })
+            .map(([key, interp]) => (
+              <option key={key} value={key} className="bg-card text-foreground">
+                {interp.icon} ei.{key}
+              </option>
+            ))}
+        </select>
+      );
+    }
+    return (
+      <select
+        value={activeVisualTool || ''}
+        onChange={(e) => {
+          e.stopPropagation();
+          const tool = e.target.value;
+          if (tool && VISUAL_TOOLS[tool]) {
+            setActiveVisualTool(tool);
+            setVisualToolArg(undefined);
+            addOutput('command', `> v.${tool}`);
+            addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30 outline-none cursor-pointer hover:bg-primary/30 transition-colors"
+      >
+        {!activeVisualTool && <option value="">Select...</option>}
+        {Object.entries(VISUAL_TOOLS).map(([key, tool]) => (
+          <option key={key} value={key} className="bg-card text-foreground">
+            {tool.icon} v.{key}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
   return (
     <div 
       className="flex h-screen bg-background"
@@ -593,17 +783,19 @@ export function Terminal() {
       <div className="fixed inset-0 scanline pointer-events-none z-10 opacity-50" />
       
       {/* Main terminal area */}
-      <div className={`flex flex-col cursor-text transition-all duration-300 ${showVisualPanel ? 'w-1/2' : 'w-full'}`}>
+      <div className={`flex flex-col cursor-text transition-all duration-300 ${showVisualPanel && !isMobile ? 'w-1/2' : 'w-full'}`}>
         {/* Header */}
-        <header className="flex-shrink-0 border-b border-border/50 px-4 py-2">
+        <header className="flex-shrink-0 border-b border-border/50 px-3 md:px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-terminal-error opacity-80" />
-                <div className="w-3 h-3 rounded-full bg-terminal-warning opacity-80" />
-                <div className="w-3 h-3 rounded-full bg-terminal-success opacity-80" />
+                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-terminal-error opacity-80" />
+                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-terminal-warning opacity-80" />
+                <div className="w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-terminal-success opacity-80" />
               </div>
-              <span className="text-muted-foreground text-sm">devxy@terminal ~ </span>
+              <span className="text-muted-foreground text-xs md:text-sm truncate">
+                {isMobile ? 'devxy ~' : 'devxy@terminal ~ '}
+              </span>
             </div>
             <button
               onClick={(e) => {
@@ -625,12 +817,12 @@ export function Terminal() {
         {/* Output area */}
         <div 
           ref={outputRef}
-          className="flex-1 overflow-y-auto p-4 space-y-1"
+          className="flex-1 overflow-y-auto p-3 md:p-4 space-y-1"
         >
           {output.map((line) => (
             <pre
               key={line.id}
-              className={`whitespace-pre-wrap break-all text-sm leading-relaxed animate-fadeIn ${getLineClass(line.type)}`}
+              className={`whitespace-pre-wrap break-all text-xs md:text-sm leading-relaxed animate-fadeIn ${getLineClass(line.type)}`}
             >
               {line.content}
             </pre>
@@ -737,9 +929,9 @@ export function Terminal() {
           <span className="w-2 h-5 bg-primary cursor-blink" />
         </div>
         
-        {/* Quick commands bar */}
-        <div className="border-t border-border/30 px-4 py-2 flex gap-2 flex-wrap">
-          {Object.keys(GENERATOR_COMMANDS).map((cmd) => (
+        {/* Quick commands bar - simplified for mobile */}
+        <div className="border-t border-border/30 px-2 md:px-4 py-2 flex gap-1.5 md:gap-2 flex-wrap overflow-x-auto">
+          {Object.keys(GENERATOR_COMMANDS).slice(0, isMobile ? 4 : undefined).map((cmd) => (
             <button
               key={cmd}
               onClick={() => {
@@ -747,13 +939,13 @@ export function Terminal() {
                 processCommand(cmd);
                 inputRef.current?.focus();
               }}
-              className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50"
+              className="text-xs px-1.5 md:px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50 whitespace-nowrap"
             >
               {cmd}
             </button>
           ))}
-          <span className="text-muted-foreground/50">|</span>
-          {Object.keys(PIPE_COMMANDS).map((cmd) => (
+          {!isMobile && <span className="text-muted-foreground/50">|</span>}
+          {Object.keys(PIPE_COMMANDS).slice(0, isMobile ? 3 : undefined).map((cmd) => (
             <button
               key={cmd}
               onClick={() => {
@@ -769,7 +961,7 @@ export function Terminal() {
                 }
                 inputRef.current?.focus();
               }}
-              className="text-xs px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary transition-colors border border-primary/30 hover:border-primary/50"
+              className="text-xs px-1.5 md:px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary transition-colors border border-primary/30 hover:border-primary/50 whitespace-nowrap"
             >
               {cmd}
             </button>
@@ -777,176 +969,50 @@ export function Terminal() {
         </div>
         </div>
 
-        {/* Status bar */}
-        <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
-          <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear • Ctrl+E Toggle Panel</span>
+        {/* Status bar - simplified for mobile */}
+        <footer className="flex-shrink-0 border-t border-border/30 px-3 md:px-4 py-1 text-xs text-muted-foreground flex justify-between">
+          <span className="truncate">
+            {isMobile ? 'Tab • ↑↓ • Tools ↗' : '/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear • Ctrl+E Toggle Panel'}
+          </span>
           <span>v1.0.0</span>
         </footer>
       </div>
 
-      {/* Visual Tools Panel */}
-      {showVisualPanel && (
-        <div 
-          ref={visualPanelRef}
-          className="w-1/2 border-l border-border/50 flex flex-col bg-card/30"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => {
-            if (e.key === 'Escape') {
-              e.preventDefault();
-              inputRef.current?.focus();
-            }
-          }}
-        >
-          {/* Panel header */}
-          <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
-            <div className="flex items-center gap-2">
-              {panelMode === 'interpreter' ? (
-                <TerminalIcon className="w-4 h-4 text-yellow-400" />
-              ) : (
-                <LayoutGrid className="w-4 h-4 text-primary" />
-              )}
-              <span className="text-sm font-medium text-foreground">
-                {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
-              </span>
-              {panelMode === 'interpreter' && (
-                <select
-                  value={activeInterpreter || ''}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    const lang = e.target.value;
-                    if (lang && EMBEDDED_INTERPRETERS[lang]) {
-                      setActiveInterpreter(lang);
-                      addOutput('command', `> ei.${lang}`);
-                      addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 outline-none cursor-pointer hover:bg-yellow-500/30 transition-colors"
-                >
-                  {!activeInterpreter && <option value="">Select...</option>}
-                  {Object.entries(EMBEDDED_INTERPRETERS)
-                    .filter(([key], _, arr) => {
-                      // Filter out 'js' alias if 'javascript' exists to avoid duplicates
-                      if (key === 'js' && arr.some(([k]) => k === 'javascript')) return false;
-                      return true;
-                    })
-                    .map(([key, interp]) => (
-                      <option key={key} value={key} className="bg-card text-foreground">
-                        {interp.icon} ei.{key}
-                      </option>
-                    ))}
-                </select>
-              )}
-              {panelMode === 'visual' && (
-                <select
-                  value={activeVisualTool || ''}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    const tool = e.target.value;
-                    if (tool && VISUAL_TOOLS[tool]) {
-                      setActiveVisualTool(tool);
-                      setVisualToolArg(undefined);
-                      addOutput('command', `> v.${tool}`);
-                      addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-xs px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30 outline-none cursor-pointer hover:bg-primary/30 transition-colors"
-                >
-                  {!activeVisualTool && <option value="">Select...</option>}
-                  {Object.entries(VISUAL_TOOLS).map(([key, tool]) => (
-                    <option key={key} value={key} className="bg-card text-foreground">
-                      {tool.icon} v.{key}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowVisualPanel(false);
-              }}
-              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Panel content */}
-          <div className="flex-1 overflow-auto">
-            {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
-              (() => {
-                const InterpreterComponent = EMBEDDED_INTERPRETERS[activeInterpreter].component;
-                return <InterpreterComponent />;
-              })()
-            ) : panelMode === 'visual' && activeVisualTool && VISUAL_TOOLS[activeVisualTool] ? (
-              (() => {
-                const ToolComponent = VISUAL_TOOLS[activeVisualTool].component;
-                return <ToolComponent initialValue={visualToolArg} />;
-              })()
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                <LayoutGrid className="w-12 h-12 text-muted-foreground/30 mb-4" />
-                <h3 className="text-lg font-medium text-muted-foreground mb-2">No Tool Active</h3>
-                <p className="text-sm text-muted-foreground/70 mb-6">
-                  Run a command to open a tool here
-                </p>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Visual Tools</h4>
-                    <div className="space-y-2">
-                      {Object.entries(VISUAL_TOOLS).map(([name, tool]) => (
-                        <button
-                          key={name}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveVisualTool(name);
-                            setVisualToolArg(undefined);
-                            setPanelMode('visual');
-                            addOutput('command', `> v.${name}`);
-                            addOutput('info', `📺 Opening visual tool: ${tool.icon} ${tool.description}`);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left transition-colors"
-                        >
-                          <span className="text-xl">{tool.icon}</span>
-                          <div>
-                            <div className="text-sm font-medium text-foreground">v.{name}</div>
-                            <div className="text-xs text-muted-foreground">{tool.description}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Interpreters</h4>
-                    <div className="space-y-2">
-                      {Object.entries(EMBEDDED_INTERPRETERS).map(([name, interp]) => (
-                        <button
-                          key={name}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveInterpreter(name);
-                            setPanelMode('interpreter');
-                            addOutput('command', `> ei.${name}`);
-                            addOutput('info', `🖥️ Opening interpreter: ${interp.icon} ${interp.description}`);
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 text-left transition-colors"
-                        >
-                          <span className="text-xl">{interp.icon}</span>
-                          <div>
-                            <div className="text-sm font-medium text-foreground">ei.{name}</div>
-                            <div className="text-xs text-muted-foreground">{interp.description}</div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+      {/* Visual Tools Panel - Desktop: Side panel, Mobile: Bottom sheet */}
+      {isMobile ? (
+        <Drawer open={showVisualPanel} onOpenChange={setShowVisualPanel}>
+          <DrawerContent className="h-[85vh] bg-card">
+            <DrawerHeader className="border-b border-border/50 pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {panelMode === 'interpreter' ? (
+                    <TerminalIcon className="w-4 h-4 text-yellow-400" />
+                  ) : (
+                    <LayoutGrid className="w-4 h-4 text-primary" />
+                  )}
+                  <DrawerTitle className="text-sm font-medium">
+                    {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
+                  </DrawerTitle>
+                  {renderToolSelector()}
                 </div>
+                <DrawerClose asChild>
+                  <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </DrawerClose>
               </div>
-            )}
+            </DrawerHeader>
+            <div className="flex-1 overflow-auto">
+              <PanelContent />
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : (
+        showVisualPanel && (
+          <div className="w-1/2 border-l border-border/50 flex flex-col bg-card/30">
+            <PanelContent />
           </div>
-        </div>
+        )
       )}
     </div>
   );
