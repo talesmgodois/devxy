@@ -319,14 +319,15 @@ export function Terminal() {
     setInput(value);
     setHistoryIndex(-1);
     
-    // Show autocomplete when typing
+    // Show autocomplete when typing (or keep showing if already open with empty input)
     const pipeIndex = value.lastIndexOf('|');
     const currentPart = pipeIndex >= 0 ? value.slice(pipeIndex + 1).trim() : value.trim();
     
     if (currentPart.length > 0) {
       setShowAutocomplete(true);
       setAutocompleteIndex(0);
-    } else {
+    } else if (!showAutocomplete) {
+      // Only hide if not already showing (allows "/" shortcut to keep it open)
       setShowAutocomplete(false);
     }
   };
@@ -355,6 +356,13 @@ export function Terminal() {
     } else if (e.key === 'Escape') {
       setShowAutocomplete(false);
       setAutocompleteIndex(0);
+    } else if (e.key === '/') {
+      // Show all commands when typing "/"
+      if (input.trim() === '' || input.endsWith('| ') || input.endsWith('|')) {
+        e.preventDefault();
+        setShowAutocomplete(true);
+        setAutocompleteIndex(0);
+      }
     } else if (e.key === 'ArrowUp') {
       if (showAutocomplete && filteredCommands.length > 0) {
         e.preventDefault();
