@@ -157,6 +157,7 @@ export function Terminal() {
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const visualPanelRef = useRef<HTMLDivElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
   const resultHistoryRef = useRef<string[]>([]);
   const hasInitialized = useRef(false);
@@ -608,7 +609,13 @@ export function Terminal() {
     } else if (e.key === 'ArrowUp') {
       if (showAutocomplete && filteredCommands.length > 0) {
         e.preventDefault();
-        setAutocompleteIndex(prev => prev > 0 ? prev - 1 : filteredCommands.length - 1);
+        const newIndex = autocompleteIndex > 0 ? autocompleteIndex - 1 : filteredCommands.length - 1;
+        setAutocompleteIndex(newIndex);
+        // Scroll into view
+        setTimeout(() => {
+          const item = autocompleteRef.current?.querySelector(`[data-index="${newIndex}"]`);
+          item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }, 0);
       } else {
         e.preventDefault();
         if (history.length > 0) {
@@ -620,7 +627,13 @@ export function Terminal() {
     } else if (e.key === 'ArrowDown') {
       if (showAutocomplete && filteredCommands.length > 0) {
         e.preventDefault();
-        setAutocompleteIndex(prev => prev < filteredCommands.length - 1 ? prev + 1 : 0);
+        const newIndex = autocompleteIndex < filteredCommands.length - 1 ? autocompleteIndex + 1 : 0;
+        setAutocompleteIndex(newIndex);
+        // Scroll into view
+        setTimeout(() => {
+          const item = autocompleteRef.current?.querySelector(`[data-index="${newIndex}"]`);
+          item?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }, 0);
       } else {
         e.preventDefault();
         if (historyIndex !== -1) {
@@ -910,7 +923,10 @@ export function Terminal() {
           let globalIndex = 0;
           
           return (
-            <div className="absolute bottom-full left-0 right-0 mb-1 mx-4 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+            <div 
+              ref={autocompleteRef}
+              className="absolute bottom-full left-0 right-0 mb-1 mx-4 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto"
+            >
               <div className="p-2">
                 {Object.entries(groups).map(([type, group]) => {
                   if (group.commands.length === 0) return null;
@@ -921,6 +937,7 @@ export function Terminal() {
                     return (
                       <button
                         key={cmd.name}
+                        data-index={currentIndex}
                         onClick={() => selectAutocompleteItem(cmd.name)}
                         className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors ${
                           currentIndex === autocompleteIndex 
