@@ -109,6 +109,24 @@ export function Terminal() {
     }
   }, [output]);
 
+  // Global '/' shortcut to open command palette
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: globalThis.KeyboardEvent) => {
+      // Only trigger if not already focused on input
+      if (document.activeElement === inputRef.current) return;
+      
+      if (e.key === '/') {
+        e.preventDefault();
+        inputRef.current?.focus();
+        setShowAutocomplete(true);
+        setAutocompleteIndex(0);
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
+
   const addOutput = (type: OutputLine['type'], content: string) => {
     setOutput(prev => [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }]);
   };
@@ -530,7 +548,7 @@ export function Terminal() {
 
       {/* Status bar */}
       <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
-        <span>Tab Autocomplete • ↑↓ History • Ctrl+L Clear • Enter Execute</span>
+        <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear</span>
         <span>v1.0.0</span>
       </footer>
     </div>
