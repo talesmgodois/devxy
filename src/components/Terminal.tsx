@@ -76,25 +76,24 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
 };
 
 const WELCOME_MESSAGE_DESKTOP = `
-╔═══════════════════════════════════════════════════════════════╗
-║                                                               ║
-║   ██████╗ ███████╗██╗   ██╗██╗  ██╗██╗   ██╗                 ║
-║   ██╔══██╗██╔════╝██║   ██║╚██╗██╔╝╚██╗ ██╔╝                 ║
-║   ██║  ██║█████╗  ██║   ██║ ╚███╔╝  ╚████╔╝                  ║
-║   ██║  ██║██╔══╝  ╚██╗ ██╔╝ ██╔██╗   ╚██╔╝                   ║
-║   ██████╔╝███████╗ ╚████╔╝ ██╔╝ ██╗   ██║                    ║
-║   ╚═════╝ ╚══════╝  ╚═══╝  ╚═╝  ╚═╝   ╚═╝                    ║
-║                                                               ║
-║   Developer Micro-Tools Console v1.0                          ║
-║   Type 'help' for available commands                          ║
-║                                                               ║
-╚═══════════════════════════════════════════════════════════════╝`;
++--------------------------------------------------+
+|                                                  |
+|   DDDDD   EEEEE  V     V  X   X  Y   Y           |
+|   D    D  E      V     V   X X    Y Y            |
+|   D    D  EEEE   V     V    X      Y             |
+|   D    D  E       V   V    X X     Y             |
+|   DDDDD   EEEEE    VVV    X   X    Y             |
+|                                                  |
+|   Developer Micro-Tools Console v1.0             |
+|   Type 'help' for available commands             |
+|                                                  |
++--------------------------------------------------+`;
 
 const WELCOME_MESSAGE_MOBILE = `
-┌─────────────────────────┐
-│  DEVXY Terminal v1.0    │
-│  Type 'help' for cmds   │
-└─────────────────────────┘`;
++------------------------+
+|  DEVXY Terminal v1.0   |
+|  Type 'help' for cmds  |
++------------------------+`;
 
 export function Terminal() {
   const isMobile = useIsMobile();
