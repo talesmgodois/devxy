@@ -92,8 +92,8 @@ export function Terminal() {
   const [history, setHistory] = useState<string[]>([]);
   const [resultHistory, setResultHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [tabIndex, setTabIndex] = useState(-1);
-  const [tabSuggestions, setTabSuggestions] = useState<string[]>([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteIndex, setAutocompleteIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
@@ -239,6 +239,29 @@ export function Terminal() {
     }
   };
 
+  const getAllCommands = () => {
+    return [
+      ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
+      ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
+      { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
+      { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
+      { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
+    ];
+  };
+
+  const getFilteredCommands = () => {
+    const allCommands = getAllCommands();
+    
+    // Check if we're after a pipe
+    const pipeIndex = input.lastIndexOf('|');
+    const currentPart = pipeIndex >= 0 ? input.slice(pipeIndex + 1).trim() : input.trim();
+    
+    if (!currentPart) return allCommands;
+    
+    const lower = currentPart.toLowerCase();
+    return allCommands.filter(cmd => cmd.name.includes(lower));
+  };
+
   const getAutocompleteSuggestions = (partial: string): string[] => {
     if (!partial) return [];
     
@@ -256,13 +279,7 @@ export function Terminal() {
 
   const getGhostText = (): string => {
     const trimmed = input.trim();
-    if (!trimmed) return '';
-    
-    // If we're cycling through suggestions, show the current one
-    if (tabIndex >= 0 && tabSuggestions.length > 0) {
-      const currentSuggestion = tabSuggestions[tabIndex];
-      return currentSuggestion.slice(trimmed.length);
-    }
+    if (!trimmed || showAutocomplete) return '';
     
     const suggestions = getAutocompleteSuggestions(trimmed);
     if (suggestions.length >= 1) {
@@ -271,74 +288,87 @@ export function Terminal() {
     return '';
   };
 
-  const resetTabCycle = () => {
-    setTabIndex(-1);
-    setTabSuggestions([]);
+  const selectAutocompleteItem = (commandName: string) => {
+    const pipeIndex = input.lastIndexOf('|');
+    const prefix = pipeIndex >= 0 ? input.slice(0, pipeIndex + 1) + ' ' : '';
+    setInput(prefix + commandName);
+    setShowAutocomplete(false);
+    setAutocompleteIndex(0);
+    inputRef.current?.focus();
   };
 
   const handleInputChange = (value: string) => {
     setInput(value);
-    resetTabCycle();
+    setHistoryIndex(-1);
+    
+    // Show autocomplete when typing
+    const pipeIndex = value.lastIndexOf('|');
+    const currentPart = pipeIndex >= 0 ? value.slice(pipeIndex + 1).trim() : value.trim();
+    
+    if (currentPart.length > 0) {
+      setShowAutocomplete(true);
+      setAutocompleteIndex(0);
+    } else {
+      setShowAutocomplete(false);
+    }
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    const filteredCommands = getFilteredCommands();
+    
     if (e.key === 'Enter') {
-      resetTabCycle();
-      handleSubmit();
+      if (showAutocomplete && filteredCommands.length > 0) {
+        e.preventDefault();
+        selectAutocompleteItem(filteredCommands[autocompleteIndex].name);
+      } else {
+        setShowAutocomplete(false);
+        handleSubmit();
+      }
     } else if (e.key === 'Tab') {
       e.preventDefault();
-      const trimmed = input.trim();
-      const suggestions = getAutocompleteSuggestions(trimmed);
-      
-      if (suggestions.length === 0) return;
-      
-      if (suggestions.length === 1) {
-        // Single match - complete it
-        setInput(suggestions[0]);
-        resetTabCycle();
+      if (showAutocomplete && filteredCommands.length > 0) {
+        selectAutocompleteItem(filteredCommands[autocompleteIndex].name);
       } else {
-        // Multiple matches - cycle through them zsh-style
-        if (tabSuggestions.length === 0 || tabSuggestions.join() !== suggestions.join()) {
-          // First Tab press or suggestions changed - start cycling
-          setTabSuggestions(suggestions);
-          setTabIndex(0);
+        const suggestions = getAutocompleteSuggestions(input.trim());
+        if (suggestions.length === 1) {
           setInput(suggestions[0]);
-        } else {
-          // Continue cycling
-          const nextIndex = (tabIndex + 1) % suggestions.length;
-          setTabIndex(nextIndex);
-          setInput(suggestions[nextIndex]);
         }
       }
     } else if (e.key === 'Escape') {
-      resetTabCycle();
+      setShowAutocomplete(false);
+      setAutocompleteIndex(0);
     } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      resetTabCycle();
-      if (history.length > 0) {
-        const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
-        setHistoryIndex(newIndex);
-        setInput(history[newIndex]);
-      }
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      resetTabCycle();
-      if (historyIndex !== -1) {
-        const newIndex = historyIndex + 1;
-        if (newIndex >= history.length) {
-          setHistoryIndex(-1);
-          setInput('');
-        } else {
+      if (showAutocomplete && filteredCommands.length > 0) {
+        e.preventDefault();
+        setAutocompleteIndex(prev => prev > 0 ? prev - 1 : filteredCommands.length - 1);
+      } else {
+        e.preventDefault();
+        if (history.length > 0) {
+          const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
           setHistoryIndex(newIndex);
           setInput(history[newIndex]);
+        }
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (showAutocomplete && filteredCommands.length > 0) {
+        e.preventDefault();
+        setAutocompleteIndex(prev => prev < filteredCommands.length - 1 ? prev + 1 : 0);
+      } else {
+        e.preventDefault();
+        if (historyIndex !== -1) {
+          const newIndex = historyIndex + 1;
+          if (newIndex >= history.length) {
+            setHistoryIndex(-1);
+            setInput('');
+          } else {
+            setHistoryIndex(newIndex);
+            setInput(history[newIndex]);
+          }
         }
       }
     } else if (e.key === 'l' && e.ctrlKey) {
       e.preventDefault();
       setOutput([]);
-    } else {
-      // Any other key resets the tab cycle
-      resetTabCycle();
     }
   };
 
@@ -399,7 +429,40 @@ export function Terminal() {
       </div>
 
       {/* Input area */}
-      <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm">
+      <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative">
+        {/* Discord-style floating autocomplete */}
+        {showAutocomplete && getFilteredCommands().length > 0 && (
+          <div className="absolute bottom-full left-0 right-0 mb-1 mx-4 bg-card border border-border rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+            <div className="p-2">
+              <div className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wide">Commands</div>
+              {getFilteredCommands().map((cmd, index) => (
+                <button
+                  key={cmd.name}
+                  onClick={() => selectAutocompleteItem(cmd.name)}
+                  className={`w-full flex items-center gap-3 px-2 py-2 rounded-md text-left transition-colors ${
+                    index === autocompleteIndex 
+                      ? 'bg-primary/20 text-foreground' 
+                      : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
+                    cmd.type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
+                    cmd.type === 'pipe' ? 'bg-primary/20 text-primary' :
+                    cmd.type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
+                    'bg-muted text-muted-foreground'
+                  }`}>
+                    {cmd.type === 'generator' ? 'GEN' : 
+                     cmd.type === 'pipe' ? 'PIPE' : 
+                     cmd.type === 'history' ? 'HIST' : 'UTIL'}
+                  </span>
+                  <span className="font-medium text-sm">{cmd.name}</span>
+                  <span className="text-xs text-muted-foreground flex-1 truncate">{cmd.desc}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <div className="flex items-center px-4 py-3 gap-2">
           <span className="text-terminal-prompt font-bold">❯</span>
           <div className="flex-1 relative">
@@ -415,6 +478,7 @@ export function Terminal() {
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
+              onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
               className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10"
               placeholder="Type a command..."
               spellCheck={false}
