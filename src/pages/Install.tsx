@@ -1,59 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Download, Smartphone, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
+import { Download, Smartphone, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt(): Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-}
+import { usePWAInstall } from '@/hooks/use-pwa-install';
 
 const Install = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstall();
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches 
-      || (window.navigator as any).standalone === true;
-    setIsStandalone(isStandaloneMode);
-
     // Detect iOS
     const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIOSDevice);
-
-    // Listen for install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-    };
-
-    const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-    };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
   }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-    }
-    setDeferredPrompt(null);
-  };
 
   if (isStandalone) {
     return (
@@ -99,9 +57,9 @@ const Install = () => {
                 O Devxy foi adicionado à sua tela inicial.
               </p>
             </div>
-          ) : deferredPrompt ? (
+          ) : canInstall ? (
             <Button 
-              onClick={handleInstallClick} 
+              onClick={promptInstall} 
               className="w-full h-14 text-lg bg-green-600 hover:bg-green-700"
             >
               <Download className="w-5 h-5 mr-2" />
