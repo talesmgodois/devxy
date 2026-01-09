@@ -265,6 +265,7 @@ export function Terminal() {
         if (VISUAL_TOOLS[toolName]) {
           setActiveVisualTool(toolName);
           setVisualToolArg(arg);
+          setPanelMode('visual');
           setShowVisualPanel(true);
           addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[toolName].icon} ${VISUAL_TOOLS[toolName].description}`);
           return;
