@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
 import { VISUAL_TOOLS } from './visual-tools';
+import { EmbedViewer } from './visual-tools/EmbedViewer';
 import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
 import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 import { MobileFAB } from './MobileFAB';
-
+import { useEmbeddedTools, getEmbeddedToolsStatic, EmbeddedTool } from '@/hooks/use-embedded-tools';
 interface OutputLine {
   id: number;
   type: 'command' | 'result' | 'error' | 'info' | 'welcome';
@@ -173,6 +174,7 @@ const saveHistoryToStorage = (history: { cmd: string; timestamp: Date }[]) => {
 
 export function Terminal() {
   const isMobile = useIsMobile();
+  const { tools: embeddedTools } = useEmbeddedTools();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>(() => loadHistoryFromStorage());
@@ -184,7 +186,8 @@ export function Terminal() {
   const [activeVisualTool, setActiveVisualTool] = useState<string | null>(null);
   const [visualToolArg, setVisualToolArg] = useState<string | undefined>(undefined);
   const [activeInterpreter, setActiveInterpreter] = useState<string | null>(null);
-  const [panelMode, setPanelMode] = useState<'visual' | 'interpreter'>('visual');
+  const [activeEmbeddedTool, setActiveEmbeddedTool] = useState<EmbeddedTool | null>(null);
+  const [panelMode, setPanelMode] = useState<'visual' | 'interpreter' | 'embed'>('visual');
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const visualPanelRef = useRef<HTMLDivElement>(null);
@@ -418,6 +421,26 @@ export function Terminal() {
       return;
     }
 
+    // Check for embedded tool commands (ve.toolname)
+    if (lowerCmd.startsWith('ve.')) {
+      const embedMatch = lowerCmd.match(/^ve\.(\w+)$/);
+      if (embedMatch) {
+        const [, toolId] = embedMatch;
+        const embeddedToolsList = getEmbeddedToolsStatic();
+        const embeddedTool = embeddedToolsList.find(t => t.id === toolId);
+        if (embeddedTool) {
+          setActiveEmbeddedTool(embeddedTool);
+          setPanelMode('embed');
+          setShowVisualPanel(true);
+          addOutput('info', `🔗 Opening embedded tool: ${embeddedTool.name}${embeddedTool.description ? ` - ${embeddedTool.description}` : ''}`);
+          return;
+        }
+      }
+      const availableEmbeds = getEmbeddedToolsStatic().map(t => 've.' + t.id).join(', ');
+      addOutput('error', `Embedded tool not found: '${cmd}'.${availableEmbeds ? ` Available: ${availableEmbeds}` : ' No embeds created yet. Use v.embeds to add one.'}`);
+      return;
+    }
+
     // Check for embedded interpreter commands (ei.language)
     if (lowerCmd.startsWith('ei.')) {
       const interpreterMatch = lowerCmd.match(/^ei\.(\w+)$/);
@@ -565,10 +588,12 @@ export function Terminal() {
   };
 
   const getAllCommands = () => {
+    const embeddedToolsList = getEmbeddedToolsStatic();
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
+      ...embeddedToolsList.map(tool => ({ name: `ve.${tool.id}`, type: 'embed' as const, desc: tool.description || tool.name })),
       ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
@@ -601,7 +626,8 @@ export function Terminal() {
     const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
-    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
+    const embeddedToolsList = getEmbeddedToolsStatic();
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...embeddedToolsList.map(t => `ve.${t.id}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
     
     // Use fuzzy matching and sort by score
     const matches = allCommands
@@ -767,13 +793,15 @@ export function Terminal() {
           <div className="flex items-center gap-2">
             {panelMode === 'interpreter' ? (
               <TerminalIcon className="w-4 h-4 text-yellow-400" />
+            ) : panelMode === 'embed' ? (
+              <span className="text-base">🔗</span>
             ) : (
               <LayoutGrid className="w-4 h-4 text-primary" />
             )}
             <span className="text-sm font-medium text-foreground">
-              {panelMode === 'interpreter' ? 'Interpreter' : 'Visual Tools'}
+              {panelMode === 'interpreter' ? 'Interpreter' : panelMode === 'embed' ? 'Embedded Tool' : 'Visual Tools'}
             </span>
-            {renderToolSelector()}
+            {panelMode !== 'embed' && renderToolSelector()}
           </div>
           <button
             onClick={(e) => {
@@ -789,7 +817,13 @@ export function Terminal() {
 
       {/* Panel body */}
       <div className="flex-1 overflow-auto">
-        {panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
+        {panelMode === 'embed' && activeEmbeddedTool ? (
+          <EmbedViewer 
+            url={activeEmbeddedTool.url} 
+            name={activeEmbeddedTool.name} 
+            description={activeEmbeddedTool.description}
+          />
+        ) : panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
           (() => {
             const InterpreterComponent = EMBEDDED_INTERPRETERS[activeInterpreter].component;
             return <InterpreterComponent />;
@@ -832,6 +866,32 @@ export function Terminal() {
                   ))}
                 </div>
               </div>
+              {embeddedTools.length > 0 && (
+                <div>
+                  <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Embedded Tools</h4>
+                  <div className="space-y-2">
+                    {embeddedTools.map((tool) => (
+                      <button
+                        key={tool.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveEmbeddedTool(tool);
+                          setPanelMode('embed');
+                          addOutput('command', `> ve.${tool.id}`);
+                          addOutput('info', `🔗 Opening embedded tool: ${tool.name}${tool.description ? ` - ${tool.description}` : ''}`);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-left transition-colors"
+                      >
+                        <span className="text-xl">🔗</span>
+                        <div>
+                          <div className="text-sm font-medium text-foreground">ve.{tool.id}</div>
+                          <div className="text-xs text-muted-foreground">{tool.description || tool.name}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <h4 className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Interpreters</h4>
                 <div className="space-y-2">
