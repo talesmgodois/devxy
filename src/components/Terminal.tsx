@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
+import { VISUAL_TOOLS } from './visual-tools';
+import { LayoutGrid, X } from 'lucide-react';
 
 interface OutputLine {
   id: number;
@@ -94,6 +96,9 @@ export function Terminal() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteIndex, setAutocompleteIndex] = useState(0);
+  const [showVisualPanel, setShowVisualPanel] = useState(false);
+  const [activeVisualTool, setActiveVisualTool] = useState<string | null>(null);
+  const [visualToolArg, setVisualToolArg] = useState<string | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
   const idCounter = useRef(1);
@@ -209,7 +214,27 @@ export function Terminal() {
       const pipeHelpText = Object.entries(PIPE_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
-      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
+      const visualHelpText = Object.entries(VISUAL_TOOLS)
+        .map(([name, { description, icon }]) => `  v.${name.padEnd(18)} ${icon} ${description}`)
+        .join('\n');
+      addOutput('info', `Generator commands:\n\n${genHelpText}\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nPipe example: rndCpf | xc (copies generated CPF to clipboard)`);
+      return;
+    }
+
+    // Check for visual tool commands (v.toolname or v.toolname(arg))
+    if (lowerCmd.startsWith('v.')) {
+      const visualMatch = lowerCmd.match(/^v\.(\w+)(?:\((.+)\))?$/);
+      if (visualMatch) {
+        const [, toolName, arg] = visualMatch;
+        if (VISUAL_TOOLS[toolName]) {
+          setActiveVisualTool(toolName);
+          setVisualToolArg(arg);
+          setShowVisualPanel(true);
+          addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[toolName].icon} ${VISUAL_TOOLS[toolName].description}`);
+          return;
+        }
+      }
+      addOutput('error', `Visual tool not found: '${cmd}'. Available: ${Object.keys(VISUAL_TOOLS).map(t => 'v.' + t).join(', ')}`);
       return;
     }
 
@@ -338,6 +363,7 @@ export function Terminal() {
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
+      ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
       { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
@@ -368,7 +394,7 @@ export function Terminal() {
     const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
-    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), 'latest', 'help', 'clear'];
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), 'latest', 'help', 'clear'];
     
     // Use fuzzy matching and sort by score
     const matches = allCommands
@@ -505,38 +531,56 @@ export function Terminal() {
 
   return (
     <div 
-      className="flex flex-col h-screen bg-background cursor-text"
+      className="flex h-screen bg-background"
       onClick={handleContainerClick}
     >
       {/* Scanline effect overlay */}
       <div className="fixed inset-0 scanline pointer-events-none z-10 opacity-50" />
       
-      {/* Header */}
-      <header className="flex-shrink-0 border-b border-border/50 px-4 py-2">
-        <div className="flex items-center gap-3">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-terminal-error opacity-80" />
-            <div className="w-3 h-3 rounded-full bg-terminal-warning opacity-80" />
-            <div className="w-3 h-3 rounded-full bg-terminal-success opacity-80" />
+      {/* Main terminal area */}
+      <div className={`flex flex-col cursor-text transition-all duration-300 ${showVisualPanel ? 'w-1/2' : 'w-full'}`}>
+        {/* Header */}
+        <header className="flex-shrink-0 border-b border-border/50 px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-terminal-error opacity-80" />
+                <div className="w-3 h-3 rounded-full bg-terminal-warning opacity-80" />
+                <div className="w-3 h-3 rounded-full bg-terminal-success opacity-80" />
+              </div>
+              <span className="text-muted-foreground text-sm">devxy@terminal ~ </span>
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowVisualPanel(!showVisualPanel);
+              }}
+              className={`p-2 rounded-md transition-colors ${
+                showVisualPanel 
+                  ? 'bg-primary/20 text-primary' 
+                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              title="Toggle visual tools panel"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
           </div>
-          <span className="text-muted-foreground text-sm">devxy@terminal ~ </span>
-        </div>
-      </header>
+        </header>
 
-      {/* Output area */}
-      <div 
-        ref={outputRef}
-        className="flex-1 overflow-y-auto p-4 space-y-1"
-      >
-        {output.map((line) => (
-          <pre
-            key={line.id}
-            className={`whitespace-pre-wrap break-all text-sm leading-relaxed animate-fadeIn ${getLineClass(line.type)}`}
-          >
-            {line.content}
-          </pre>
-        ))}
-      </div>
+        {/* Output area */}
+        <div 
+          ref={outputRef}
+          className="flex-1 overflow-y-auto p-4 space-y-1"
+        >
+          {output.map((line) => (
+            <pre
+              key={line.id}
+              className={`whitespace-pre-wrap break-all text-sm leading-relaxed animate-fadeIn ${getLineClass(line.type)}`}
+            >
+              {line.content}
+            </pre>
+          ))}
+        </div>
 
       {/* Input area */}
       <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative">
@@ -549,6 +593,7 @@ export function Terminal() {
           const groups = {
             generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator') },
             pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe') },
+            visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual') },
             history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history') },
             utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility') },
           };
@@ -578,11 +623,13 @@ export function Terminal() {
                         <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${
                           type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
                           type === 'pipe' ? 'bg-primary/20 text-primary' :
+                          type === 'visual' ? 'bg-purple-500/20 text-purple-400' :
                           type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
                           'bg-muted text-muted-foreground'
                         }`}>
                           {type === 'generator' ? 'GEN' : 
                            type === 'pipe' ? 'PIPE' : 
+                           type === 'visual' ? 'VIS' :
                            type === 'history' ? 'HIST' : 'UTIL'}
                         </span>
                         <span className="font-medium text-sm">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
@@ -670,13 +717,80 @@ export function Terminal() {
             </button>
           ))}
         </div>
+        </div>
+
+        {/* Status bar */}
+        <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
+          <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear</span>
+          <span>v1.0.0</span>
+        </footer>
       </div>
 
-      {/* Status bar */}
-      <footer className="flex-shrink-0 border-t border-border/30 px-4 py-1 text-xs text-muted-foreground flex justify-between">
-        <span>/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear</span>
-        <span>v1.0.0</span>
-      </footer>
+      {/* Visual Tools Panel */}
+      {showVisualPanel && (
+        <div className="w-1/2 border-l border-border/50 flex flex-col bg-card/30">
+          {/* Visual panel header */}
+          <div className="flex-shrink-0 border-b border-border/50 px-4 py-2 flex items-center justify-between bg-card/50">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium text-foreground">Visual Tools</span>
+              {activeVisualTool && VISUAL_TOOLS[activeVisualTool] && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/20 text-primary">
+                  {VISUAL_TOOLS[activeVisualTool].icon} {activeVisualTool}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowVisualPanel(false);
+              }}
+              className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Visual tool content */}
+          <div className="flex-1 overflow-auto">
+            {activeVisualTool && VISUAL_TOOLS[activeVisualTool] ? (
+              (() => {
+                const ToolComponent = VISUAL_TOOLS[activeVisualTool].component;
+                return <ToolComponent initialValue={visualToolArg} />;
+              })()
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <LayoutGrid className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-medium text-muted-foreground mb-2">No Visual Tool Active</h3>
+                <p className="text-sm text-muted-foreground/70 mb-6">
+                  Run a visual command to open a tool here
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(VISUAL_TOOLS).map(([name, tool]) => (
+                    <button
+                      key={name}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveVisualTool(name);
+                        setVisualToolArg(undefined);
+                        addOutput('command', `> v.${name}`);
+                        addOutput('info', `📺 Opening visual tool: ${tool.icon} ${tool.description}`);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-2 rounded-lg bg-muted/50 hover:bg-muted text-left transition-colors"
+                    >
+                      <span className="text-xl">{tool.icon}</span>
+                      <div>
+                        <div className="text-sm font-medium text-foreground">v.{name}</div>
+                        <div className="text-xs text-muted-foreground">{tool.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
