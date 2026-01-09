@@ -39,6 +39,34 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
     }, 
     desc: 'Paste from clipboard' 
   },
+  xl: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to transform';
+      return text.toLowerCase();
+    },
+    desc: 'Convert to lowercase'
+  },
+  xu: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to transform';
+      return text.toUpperCase();
+    },
+    desc: 'Convert to uppercase'
+  },
+  xt: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to transform';
+      return text.trim();
+    },
+    desc: 'Trim whitespace'
+  },
+  xr: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to transform';
+      return text.split('').reverse().join('');
+    },
+    desc: 'Reverse string'
+  },
 };
 
 const WELCOME_MESSAGE = `
