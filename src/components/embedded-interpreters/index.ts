@@ -1,4 +1,5 @@
 export { PythonInterpreter } from './PythonInterpreter';
+export { JavaScriptInterpreter } from './JavaScriptInterpreter';
 
 export interface EmbeddedInterpreter {
   name: string;
@@ -9,6 +10,7 @@ export interface EmbeddedInterpreter {
 }
 
 import { PythonInterpreter as PythonComp } from './PythonInterpreter';
+import { JavaScriptInterpreter as JSComp } from './JavaScriptInterpreter';
 
 export const EMBEDDED_INTERPRETERS: Record<string, EmbeddedInterpreter> = {
   python: {
@@ -17,5 +19,19 @@ export const EMBEDDED_INTERPRETERS: Record<string, EmbeddedInterpreter> = {
     description: 'Python interpreter (simulated)',
     icon: '🐍',
     language: 'Python',
+  },
+  javascript: {
+    name: 'javascript',
+    component: JSComp,
+    description: 'JavaScript console (ES6+)',
+    icon: '🟨',
+    language: 'JavaScript',
+  },
+  js: {
+    name: 'js',
+    component: JSComp,
+    description: 'JavaScript console (ES6+)',
+    icon: '🟨',
+    language: 'JavaScript',
   },
 };
