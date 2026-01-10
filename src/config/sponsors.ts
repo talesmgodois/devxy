@@ -33,7 +33,7 @@ export const SUPPORT_LINKS: SupportLink[] = [
   {
     id: 'github-sponsors',
     name: 'GitHub Sponsors',
-    url: 'https://github.com/sponsors/mgodois',
+    url: 'https://github.com/sponsors/talesmgodois',
     icon: '❤️',
     description: 'Support via GitHub Sponsors',
   },
