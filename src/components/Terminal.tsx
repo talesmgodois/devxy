@@ -704,8 +704,9 @@ export function Terminal() {
       setShowAutocomplete(false);
       setAutocompleteIndex(0);
     } else if (e.key === '/') {
-      // Show all commands when typing "/"
-      if (input.trim() === '' || input.endsWith('| ') || input.endsWith('|')) {
+      // Show all commands when typing "/" on empty input or after pipe
+      const trimmedInput = input.trim();
+      if (trimmedInput === '' || trimmedInput.endsWith('|')) {
         e.preventDefault();
         setShowAutocomplete(true);
         setAutocompleteIndex(0);
@@ -1023,7 +1024,7 @@ export function Terminal() {
       <div className="fixed inset-0 scanline pointer-events-none z-10 opacity-50" />
       
       {/* Main terminal area */}
-      <div className={`flex flex-col cursor-text transition-all duration-300 ${showVisualPanel && !isMobile ? 'w-1/2' : 'w-full'}`}>
+      <div className={`flex flex-col cursor-text transition-all duration-300 overflow-visible ${showVisualPanel && !isMobile ? 'w-1/2' : 'w-full'}`}>
         {/* Header */}
         <header className="flex-shrink-0 border-b border-border/50 px-3 md:px-4 py-2">
           <div className="flex items-center justify-between">
@@ -1070,7 +1071,7 @@ export function Terminal() {
         </div>
 
       {/* Input area */}
-      <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative">
+      <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative overflow-visible">
         {/* Discord-style floating autocomplete */}
         {showAutocomplete && (() => {
           const filteredCmds = getFilteredCommands();
@@ -1184,9 +1185,13 @@ export function Terminal() {
               value={input}
               onChange={(e) => handleInputChange(e.target.value)}
               onKeyDown={handleKeyDown}
+              onFocus={() => {
+                // Reset autocomplete index on focus
+                setAutocompleteIndex(0);
+              }}
               onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
               className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10 text-sm"
-              placeholder="Type a command..."
+              placeholder="Type a command... (press / for commands)"
               spellCheck={false}
               autoComplete="off"
             />
