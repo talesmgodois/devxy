@@ -5,14 +5,14 @@ export const APP_INFO = {
   author: {
     name: 'Tales Marinho Godois',
     website: 'https://mgodois.com',
-    github: 'https://github.com/mgodois',
+    github: 'https://github.com/talesmgodois',
     email: 'tales@mgodois.com',
   },
-  repository: 'https://github.com/mgodois/devxy',
+  repository: 'https://github.com/talesmgodois/devxy',
   website: 'https://devxy.mgodois.com',
   license: 'MIT',
   support: {
-    githubSponsors: 'https://github.com/sponsors/mgodois',
+    githubSponsors: 'https://github.com/sponsors/talesmgodois',
     buyMeACoffee: 'https://buymeacoffee.com/mgodois',
   },
 } as const;
