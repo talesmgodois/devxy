@@ -1299,8 +1299,8 @@ export function Terminal() {
                         onMouseEnter={() => setAutocompleteIndex(currentIndex)}
                         className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm ${
                           isSelected 
-                            ? 'bg-accent text-accent-foreground' 
-                            : 'text-foreground hover:bg-accent/50'
+                            ? 'bg-primary/20 text-foreground border-l-2 border-primary' 
+                            : 'text-foreground hover:bg-muted/50'
                         }`}
                       >
                         <span className={`shrink-0 w-12 text-[10px] font-medium ${
