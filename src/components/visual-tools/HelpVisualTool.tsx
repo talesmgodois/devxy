@@ -62,6 +62,7 @@ export function HelpVisualTool() {
           { name: 'v.curl', desc: 'cURL request generator' },
           { name: 'v.json', desc: 'JSON formatter & validator' },
           { name: 'v.embeds', desc: 'Manage embedded URL tools' },
+          { name: 'v.about', desc: 'Version & author information' },
           { name: 'v.help', desc: 'This help reference' },
         ],
       },

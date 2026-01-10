@@ -395,8 +395,8 @@ export function Terminal() {
 
     const lowerCmd = trimmedCmd.toLowerCase();
 
-    // About command
-    if (lowerCmd === 'about' || lowerCmd === 'v.about') {
+    // About command (text version for terminal)
+    if (lowerCmd === 'about') {
       addOutput('info', getAboutInfo());
       return;
     }
