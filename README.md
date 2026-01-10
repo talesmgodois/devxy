@@ -1,73 +1,77 @@
-# Welcome to your Lovable project
+# Devxy
 
-## Project info
+**Devxy** is an open-source developer toolkit aggregator - a collection of micro-tools designed to streamline your development workflow, all accessible from a unified terminal interface.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+🌐 **Live Demo**: [devxy.mgodois.com](https://devxy.mgodois.com)
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- 🖥️ **Terminal Interface** - Access all tools through a familiar command-line interface
+- 🔧 **Micro-Tools** - JSON formatter, cURL generator, CSV generator, temperature converter, and more
+- 🐍 **Embedded Interpreters** - Run Python and JavaScript code directly in the browser
+- ⚡ **Pipe Support** - Chain commands together for powerful workflows
+- 📱 **PWA Support** - Install as a standalone app on any device
 
-**Use Lovable**
+## Quick Start
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+```bash
+# Clone the repository
+git clone https://github.com/mgodois/devxy.git
 
-Changes made via Lovable will be committed automatically to this repo.
+# Navigate to the project directory
+cd devxy
 
-**Use your preferred IDE**
+# Install dependencies
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start the development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Available Commands
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Type `help` in the terminal to see all available commands, or use `/` to open the quick command panel.
 
-**Use GitHub Codespaces**
+### Core Commands
+- `help` - Show all available commands
+- `about` or `v.about` - Display version and author information
+- `clear` - Clear the terminal output
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Navigation Commands
+- `gt <url>` - Open a URL in a new tab
+- `gt.repo` - Open the Devxy GitHub repository
+- `gt.github` - Open GitHub homepage
 
-## What technologies are used for this project?
+### Tools
+- `json` - Format and validate JSON
+- `curl` - Generate cURL commands
+- `csv` - Generate CSV files
+- `temp` - Temperature converter
+- `embed` - Manage embedded content
 
-This project is built with:
+### Interpreters
+- `py` - Python interpreter
+- `js` - JavaScript interpreter
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Technologies
 
-## How can I deploy this project?
+- [Vite](https://vitejs.dev/) - Build tool
+- [React](https://react.dev/) - UI framework
+- [TypeScript](https://www.typescriptlang.org/) - Type safety
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [shadcn/ui](https://ui.shadcn.com/) - UI components
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## Contributing
 
-## Can I connect a custom domain to my Lovable project?
+Contributions are welcome! Feel free to open issues or submit pull requests.
 
-Yes, you can!
+## Author
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+**Tales Marinho Godois**
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Website: [mgodois.com](https://mgodois.com)
+- GitHub: [@mgodois](https://github.com/mgodois)
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
