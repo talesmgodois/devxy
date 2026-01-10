@@ -391,7 +391,7 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  embed(Figma, https://figma.com)   Add Figma as embedded tool`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
       return;
     }
 
@@ -524,7 +524,48 @@ export function Terminal() {
       return;
     }
 
-    // Check for piped commands (e.g., rndCpf | xc)
+    // Check for regex(pattern, text) command to validate regular expressions
+    const regexMatch = trimmedCmd.match(/^regex\(\s*(.+?)\s*,\s*(.+?)\s*\)$/i);
+    if (regexMatch) {
+      const [, pattern, text] = regexMatch;
+      const cleanPattern = pattern.replace(/^["']|["']$/g, '');
+      const cleanText = text.replace(/^["']|["']$/g, '');
+      
+      if (!cleanPattern) {
+        addOutput('error', 'Error: Regex pattern cannot be empty.');
+        return;
+      }
+      
+      try {
+        const regex = new RegExp(cleanPattern, 'g');
+        const matches = cleanText.match(regex);
+        const testResult = regex.test(cleanText);
+        
+        // Reset lastIndex for exec
+        regex.lastIndex = 0;
+        
+        // Get detailed match info
+        const allMatches: { match: string; index: number }[] = [];
+        let execMatch;
+        while ((execMatch = regex.exec(cleanText)) !== null) {
+          allMatches.push({ match: execMatch[0], index: execMatch.index });
+          if (!regex.global) break;
+        }
+        
+        if (testResult && allMatches.length > 0) {
+          const matchList = allMatches
+            .map((m, i) => `  ${i + 1}. "${m.match}" at index ${m.index}`)
+            .join('\n');
+          addOutput('result', `✅ Pattern matches!\n\nPattern: /${cleanPattern}/g\nText: "${cleanText}"\n\nMatches (${allMatches.length}):\n${matchList}`);
+        } else {
+          addOutput('result', `❌ No match\n\nPattern: /${cleanPattern}/g\nText: "${cleanText}"`);
+        }
+      } catch (e) {
+        addOutput('error', `Error: Invalid regex pattern - ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+      return;
+    }
+
     if (trimmedCmd.includes('|')) {
       const parts = trimmedCmd.split('|').map(p => p.trim());
       let result: string | null = null;
@@ -659,6 +700,7 @@ export function Terminal() {
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
       { name: 'embed(name, url)', type: 'utility' as const, desc: 'Add a new embedded tool' },
+      { name: 'regex(pattern, text)', type: 'utility' as const, desc: 'Validate regex pattern against text' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
       { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
     ];
