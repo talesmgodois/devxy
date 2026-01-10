@@ -3,11 +3,12 @@ import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, gen
 import { VISUAL_TOOLS } from './visual-tools';
 import { EmbedViewer } from './visual-tools/EmbedViewer';
 import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
-import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown } from 'lucide-react';
+import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown, Github, Globe } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 import { MobileFAB } from './MobileFAB';
 import { useEmbeddedTools, getEmbeddedToolsStatic, EmbeddedTool } from '@/hooks/use-embedded-tools';
+import { APP_INFO, getAboutInfo } from '@/config/appInfo';
 interface OutputLine {
   id: number;
   type: 'command' | 'result' | 'error' | 'info' | 'welcome';
@@ -141,6 +142,13 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
     },
     desc: 'Decode from Base64'
   },
+};
+
+// Navigation commands (gt = goto)
+const GOTO_COMMANDS: Record<string, { url: string; desc: string }> = {
+  'gt.repo': { url: APP_INFO.repository, desc: 'Open Devxy GitHub repository' },
+  'gt.github': { url: 'https://github.com', desc: 'Open GitHub homepage' },
+  'gt.author': { url: APP_INFO.author.website, desc: 'Open author website' },
 };
 
 const WELCOME_MESSAGE_DESKTOP = `
@@ -387,6 +395,38 @@ export function Terminal() {
 
     const lowerCmd = trimmedCmd.toLowerCase();
 
+    // About command
+    if (lowerCmd === 'about' || lowerCmd === 'v.about') {
+      addOutput('info', getAboutInfo());
+      return;
+    }
+
+    // Goto commands (gt.xxx)
+    const gotoCommand = GOTO_COMMANDS[lowerCmd];
+    if (gotoCommand) {
+      window.open(gotoCommand.url, '_blank', 'noopener,noreferrer');
+      addOutput('result', `🔗 Opening ${gotoCommand.url}`);
+      return;
+    }
+
+    // Generic gt(url) command
+    const gtMatch = trimmedCmd.match(/^gt\s+(.+)$/i);
+    if (gtMatch) {
+      let url = gtMatch[1].trim();
+      // Add protocol if missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      try {
+        new URL(url);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        addOutput('result', `🔗 Opening ${url}`);
+      } catch {
+        addOutput('error', `Error: Invalid URL "${url}"`);
+      }
+      return;
+    }
+
     if (lowerCmd === 'help') {
       const genHelpText = Object.entries(GENERATOR_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
@@ -404,7 +444,10 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
+      const gotoHelpText = Object.entries(GOTO_COMMANDS)
+        .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
+        .join('\n');
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
       return;
     }
 
@@ -710,8 +753,11 @@ export function Terminal() {
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
       ...embeddedToolsList.map(tool => ({ name: `ve.${tool.id}`, type: 'embed' as const, desc: tool.description || tool.name })),
       ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
+      ...Object.keys(GOTO_COMMANDS).map(cmd => ({ name: cmd, type: 'navigation' as const, desc: GOTO_COMMANDS[cmd].desc })),
+      { name: 'gt <url>', type: 'navigation' as const, desc: 'Open any URL in a new tab' },
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
+      { name: 'about', type: 'utility' as const, desc: 'Show version and author information' },
       { name: 'embed(name, url)', type: 'utility' as const, desc: 'Add a new embedded tool' },
       { name: 'regex(pattern, text)', type: 'utility' as const, desc: 'Validate regex pattern against text' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
@@ -1209,6 +1255,7 @@ export function Terminal() {
             recent: { label: 'Recent', commands: recentCommands },
             generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator' && !seenRecent.has(c.name.toLowerCase())) },
             pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe' && !seenRecent.has(c.name.toLowerCase())) },
+            navigation: { label: 'Navigation', commands: filteredCmds.filter(c => c.type === 'navigation' && !seenRecent.has(c.name.toLowerCase())) },
             visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual' && !seenRecent.has(c.name.toLowerCase())) },
             embed: { label: 'Embedded Tools', commands: filteredCmds.filter(c => c.type === 'embed' && !seenRecent.has(c.name.toLowerCase())) },
             interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter' && !seenRecent.has(c.name.toLowerCase())) },
@@ -1250,6 +1297,7 @@ export function Terminal() {
                           type === 'recent' ? 'text-blue-400' :
                           type === 'generator' ? 'text-emerald-400' :
                           type === 'pipe' ? 'text-violet-400' :
+                          type === 'navigation' ? 'text-sky-400' :
                           type === 'visual' ? 'text-purple-400' :
                           type === 'embed' ? 'text-cyan-400' :
                           type === 'interpreter' ? 'text-amber-400' :
@@ -1259,6 +1307,7 @@ export function Terminal() {
                           {type === 'recent' ? 'recent' :
                            type === 'generator' ? 'gen' : 
                            type === 'pipe' ? 'pipe' : 
+                           type === 'navigation' ? 'goto' :
                            type === 'visual' ? 'visual' :
                            type === 'embed' ? 'embed' :
                            type === 'interpreter' ? 'lang' :
@@ -1373,11 +1422,33 @@ export function Terminal() {
         </div>
 
         {/* Status bar - simplified for mobile */}
-        <footer className="flex-shrink-0 border-t border-border/30 px-3 md:px-4 py-1 text-xs text-muted-foreground flex justify-between">
+        <footer className="flex-shrink-0 border-t border-border/30 px-3 md:px-4 py-1 text-xs text-muted-foreground flex justify-between items-center">
           <span className="truncate">
             {isMobile ? 'Tab • ↑↓ • Tools ↗' : '/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear • Ctrl+E Toggle Panel'}
           </span>
-          <span>v1.0.0</span>
+          <div className="flex items-center gap-3">
+            <a 
+              href={APP_INFO.repository}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              title="GitHub Repository"
+            >
+              <Github className="w-3.5 h-3.5" />
+              {!isMobile && <span>GitHub</span>}
+            </a>
+            <a 
+              href={APP_INFO.author.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-foreground transition-colors"
+              title="Author Website"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              {!isMobile && <span>mgodois.com</span>}
+            </a>
+            <span>v{APP_INFO.version}</span>
+          </div>
         </footer>
       </div>
 
