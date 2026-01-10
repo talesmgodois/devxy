@@ -1209,94 +1209,58 @@ export function Terminal() {
           return (
             <div 
               ref={autocompleteRef}
-              className="absolute bottom-full left-0 right-0 mb-2 mx-2 md:mx-4 bg-card/95 backdrop-blur-md border border-border/60 rounded-xl shadow-2xl z-50 max-h-80 overflow-hidden"
+              className="absolute bottom-full left-0 right-0 mb-1 mx-2 md:mx-4 bg-card border border-border rounded-md shadow-lg z-50 max-h-72 overflow-hidden"
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-3 py-2 border-b border-border/40 bg-muted/30">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Commands</span>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">↑↓</kbd>
-                  <span>navigate</span>
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">↵</kbd>
-                  <span>select</span>
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-mono">esc</kbd>
-                  <span>close</span>
-                </div>
-              </div>
-              
               {/* Scrollable command list */}
-              <div className="overflow-y-auto max-h-64 p-1.5">
-                <div className="flex flex-col gap-0.5">
-                  {Object.entries(groups).map(([type, group]) => {
-                    if (group.commands.length === 0) return null;
-                    
-                    const groupStartIndex = globalIndex;
-                    const groupItems = group.commands.map((cmd, i) => {
-                      const currentIndex = groupStartIndex + i;
-                      const isSelected = currentIndex === autocompleteIndex;
-                      
-                      return (
-                        <button
-                          key={cmd.name}
-                          data-index={currentIndex}
-                          onClick={() => selectAutocompleteItem(cmd.name)}
-                          onMouseEnter={() => setAutocompleteIndex(currentIndex)}
-                          className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all duration-150 ${
-                            isSelected 
-                              ? 'bg-primary/15 ring-1 ring-primary/30' 
-                              : 'hover:bg-muted/50'
-                          }`}
-                        >
-                          {/* Type badge */}
-                          <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${
-                            type === 'recent' ? 'bg-blue-500/20 text-blue-400' :
-                            type === 'generator' ? 'bg-emerald-500/20 text-emerald-400' :
-                            type === 'pipe' ? 'bg-violet-500/20 text-violet-400' :
-                            type === 'visual' ? 'bg-purple-500/20 text-purple-400' :
-                            type === 'embed' ? 'bg-cyan-500/20 text-cyan-400' :
-                            type === 'interpreter' ? 'bg-amber-500/20 text-amber-400' :
-                            type === 'history' ? 'bg-orange-500/20 text-orange-400' :
-                            'bg-slate-500/20 text-slate-400'
-                          }`}>
-                            {type === 'recent' ? '★' :
-                             type === 'generator' ? 'GEN' : 
-                             type === 'pipe' ? 'PIPE' : 
-                             type === 'visual' ? 'VIS' :
-                             type === 'embed' ? 'EMBED' :
-                             type === 'interpreter' ? 'LANG' :
-                             type === 'history' ? 'HIST' : 'UTIL'}
-                          </span>
-                          
-                          {/* Command name */}
-                          <span className={`font-mono text-sm ${isSelected ? 'text-foreground' : 'text-foreground/80'}`}>
-                            {renderHighlightedName(cmd.name, getCurrentQuery())}
-                          </span>
-                          
-                          {/* Description */}
-                          <span className="text-xs text-muted-foreground/70 flex-1 truncate ml-1">
-                            {cmd.desc}
-                          </span>
-                          
-                          {/* Selection indicator */}
-                          {isSelected && (
-                            <span className="shrink-0 text-primary text-xs">›</span>
-                          )}
-                        </button>
-                      );
-                    });
-                    
-                    globalIndex += group.commands.length;
+              <div className="overflow-y-auto max-h-72 py-1">
+                {Object.entries(groups).map(([type, group]) => {
+                  if (group.commands.length === 0) return null;
+                  
+                  const groupStartIndex = globalIndex;
+                  const groupItems = group.commands.map((cmd, i) => {
+                    const currentIndex = groupStartIndex + i;
+                    const isSelected = currentIndex === autocompleteIndex;
                     
                     return (
-                      <div key={type} className="mb-1 last:mb-0">
-                        <div className="text-[10px] text-muted-foreground/60 px-2.5 py-1 uppercase tracking-widest font-semibold">
-                          {group.label}
-                        </div>
-                        {groupItems}
-                      </div>
+                      <button
+                        key={cmd.name}
+                        data-index={currentIndex}
+                        onClick={() => selectAutocompleteItem(cmd.name)}
+                        onMouseEnter={() => setAutocompleteIndex(currentIndex)}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm ${
+                          isSelected 
+                            ? 'bg-accent text-accent-foreground' 
+                            : 'text-foreground hover:bg-accent/50'
+                        }`}
+                      >
+                        <span className={`shrink-0 w-12 text-[10px] font-medium ${
+                          type === 'recent' ? 'text-blue-400' :
+                          type === 'generator' ? 'text-emerald-400' :
+                          type === 'pipe' ? 'text-violet-400' :
+                          type === 'visual' ? 'text-purple-400' :
+                          type === 'embed' ? 'text-cyan-400' :
+                          type === 'interpreter' ? 'text-amber-400' :
+                          type === 'history' ? 'text-orange-400' :
+                          'text-muted-foreground'
+                        }`}>
+                          {type === 'recent' ? 'recent' :
+                           type === 'generator' ? 'gen' : 
+                           type === 'pipe' ? 'pipe' : 
+                           type === 'visual' ? 'visual' :
+                           type === 'embed' ? 'embed' :
+                           type === 'interpreter' ? 'lang' :
+                           type === 'history' ? 'hist' : 'util'}
+                        </span>
+                        <span className="font-mono shrink-0">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
+                        <span className="text-xs text-muted-foreground truncate">{cmd.desc}</span>
+                      </button>
                     );
-                  })}
-                </div>
+                  });
+                  
+                  globalIndex += group.commands.length;
+                  
+                  return <div key={type}>{groupItems}</div>;
+                })}
               </div>
             </div>
           );
