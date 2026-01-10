@@ -16,7 +16,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/mgodois/devxy.git
+git clone https://github.com/talesmgodois/devxy.git
 
 # Navigate to the project directory
 cd devxy
@@ -70,7 +70,7 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 **Tales Marinho Godois**
 
 - Website: [mgodois.com](https://mgodois.com)
-- GitHub: [@mgodois](https://github.com/mgodois)
+- GitHub: [@talesmgodois](https://github.com/talesmgodois)
 
 ## License
 
