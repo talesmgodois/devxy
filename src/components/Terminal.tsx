@@ -1331,7 +1331,15 @@ export function Terminal() {
                   
                   globalIndex += group.commands.length;
                   
-                  return <div key={type}>{groupItems}</div>;
+                  return (
+                    <div key={type}>
+                      {/* Group header */}
+                      <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 bg-muted/30 sticky top-0">
+                        {group.label}
+                      </div>
+                      {groupItems}
+                    </div>
+                  );
                 })}
               </div>
             </div>
