@@ -196,7 +196,7 @@ const saveHistoryToStorage = (history: { cmd: string; timestamp: Date }[]) => {
 
 export function Terminal() {
   const isMobile = useIsMobile();
-  const { tools: embeddedTools } = useEmbeddedTools();
+  const { tools: embeddedTools, addTool: addEmbeddedTool } = useEmbeddedTools();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>(() => loadHistoryFromStorage());
@@ -391,7 +391,7 @@ export function Terminal() {
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  embed(Figma, https://figma.com)   Add Figma as embedded tool`);
       return;
     }
 
@@ -486,6 +486,41 @@ export function Terminal() {
 
     if (lowerCmd === 'clear') {
       setOutput([]);
+      return;
+    }
+
+    // Check for embed(name, url) command to add embedded tools
+    const embedAddMatch = trimmedCmd.match(/^embed\(\s*([^,]+?)\s*,\s*(.+?)\s*\)$/i);
+    if (embedAddMatch) {
+      const [, name, url] = embedAddMatch;
+      const cleanName = name.replace(/^["']|["']$/g, '').trim();
+      const cleanUrl = url.replace(/^["']|["']$/g, '').trim();
+      
+      if (!cleanName) {
+        addOutput('error', 'Error: Tool name cannot be empty.');
+        return;
+      }
+      
+      if (!cleanUrl) {
+        addOutput('error', 'Error: Tool URL cannot be empty.');
+        return;
+      }
+      
+      // Validate URL format
+      try {
+        new URL(cleanUrl);
+      } catch {
+        addOutput('error', `Error: Invalid URL format: "${cleanUrl}"`);
+        return;
+      }
+      
+      const result = addEmbeddedTool(cleanName, cleanUrl);
+      if (result.success) {
+        const toolId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        addOutput('result', `✅ Embedded tool "${cleanName}" added successfully!\n   Access it with: ve.${toolId}`);
+      } else {
+        addOutput('error', `Error: ${result.error}`);
+      }
       return;
     }
 
@@ -623,6 +658,7 @@ export function Terminal() {
       ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
+      { name: 'embed(name, url)', type: 'utility' as const, desc: 'Add a new embedded tool' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
       { name: 'clear', type: 'utility' as const, desc: 'Clear the terminal' },
     ];
