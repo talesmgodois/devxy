@@ -5,6 +5,7 @@ export { JsonFormatter } from './JsonFormatter';
 export { HelpVisualTool } from './HelpVisualTool';
 export { EmbedManager } from './EmbedManager';
 export { EmbedViewer } from './EmbedViewer';
+export { AboutVisualTool } from './AboutVisualTool';
 
 export interface VisualTool {
   name: string;
@@ -19,6 +20,7 @@ import { CurlGenerator as CurlComp } from './CurlGenerator';
 import { JsonFormatter as JsonComp } from './JsonFormatter';
 import { HelpVisualTool as HelpComp } from './HelpVisualTool';
 import { EmbedManager as EmbedComp } from './EmbedManager';
+import { AboutVisualTool as AboutComp } from './AboutVisualTool';
 
 export const VISUAL_TOOLS: Record<string, VisualTool> = {
   temp: {
@@ -56,5 +58,11 @@ export const VISUAL_TOOLS: Record<string, VisualTool> = {
     component: EmbedComp,
     description: 'Manage embedded URL tools',
     icon: '🔗',
+  },
+  about: {
+    name: 'about',
+    component: AboutComp,
+    description: 'Version & author information',
+    icon: 'ℹ️',
   },
 };
