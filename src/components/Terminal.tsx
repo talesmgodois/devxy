@@ -119,6 +119,28 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
     },
     desc: 'Reverse string'
   },
+  b64e: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to encode';
+      try {
+        return btoa(text);
+      } catch {
+        return 'Error: Invalid input for base64 encoding';
+      }
+    },
+    desc: 'Encode to Base64'
+  },
+  b64d: {
+    fn: async (text: string) => {
+      if (!text) return 'Error: No input to decode';
+      try {
+        return atob(text);
+      } catch {
+        return 'Error: Invalid base64 string';
+      }
+    },
+    desc: 'Decode from Base64'
+  },
 };
 
 const WELCOME_MESSAGE_DESKTOP = `
