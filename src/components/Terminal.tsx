@@ -362,10 +362,14 @@ export function Terminal() {
       const visualHelpText = Object.entries(VISUAL_TOOLS)
         .map(([name, { description, icon }]) => `  v.${name.padEnd(18)} ${icon} ${description}`)
         .join('\n');
+      const embeddedToolsList = getEmbeddedToolsStatic();
+      const embedHelpText = embeddedToolsList.length > 0
+        ? embeddedToolsList.map((tool) => `  ve.${tool.id.padEnd(17)} 🔗 ${tool.description || tool.name}`).join('\n')
+        : '  (none yet - use v.embeds to add)';
       const interpreterHelpText = Object.entries(EMBEDDED_INTERPRETERS)
         .map(([name, { description, icon }]) => `  ei.${name.padEnd(17)} ${icon} ${description}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard`);
       return;
     }
 
@@ -1092,6 +1096,7 @@ export function Terminal() {
             generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator' && !seenRecent.has(c.name.toLowerCase())) },
             pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe' && !seenRecent.has(c.name.toLowerCase())) },
             visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual' && !seenRecent.has(c.name.toLowerCase())) },
+            embed: { label: 'Embedded Tools', commands: filteredCmds.filter(c => c.type === 'embed' && !seenRecent.has(c.name.toLowerCase())) },
             interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter' && !seenRecent.has(c.name.toLowerCase())) },
             history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history' && !seenRecent.has(c.name.toLowerCase())) },
             utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility' && !seenRecent.has(c.name.toLowerCase())) },
@@ -1129,6 +1134,7 @@ export function Terminal() {
                           type === 'generator' ? 'bg-terminal-success/20 text-terminal-success' :
                           type === 'pipe' ? 'bg-primary/20 text-primary' :
                           type === 'visual' ? 'bg-purple-500/20 text-purple-400' :
+                          type === 'embed' ? 'bg-cyan-500/20 text-cyan-400' :
                           type === 'interpreter' ? 'bg-yellow-500/20 text-yellow-400' :
                           type === 'history' ? 'bg-terminal-warning/20 text-terminal-warning' :
                           'bg-muted text-muted-foreground'
@@ -1137,6 +1143,7 @@ export function Terminal() {
                            type === 'generator' ? 'GEN' : 
                            type === 'pipe' ? 'PIPE' : 
                            type === 'visual' ? 'VIS' :
+                           type === 'embed' ? 'EMBED' :
                            type === 'interpreter' ? 'LANG' :
                            type === 'history' ? 'HIST' : 'UTIL'}
                         </span>
