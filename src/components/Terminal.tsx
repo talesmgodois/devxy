@@ -9,6 +9,8 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@
 import { MobileFAB } from './MobileFAB';
 import { useEmbeddedTools, getEmbeddedToolsStatic, EmbeddedTool } from '@/hooks/use-embedded-tools';
 import { APP_INFO, getAboutInfo } from '@/config/appInfo';
+import { getSponsorInfo, SUPPORT_LINKS } from '@/config/sponsors';
+import { SponsorBadge } from './AdWrapper';
 interface OutputLine {
   id: number;
   type: 'command' | 'result' | 'error' | 'info' | 'welcome';
@@ -149,6 +151,7 @@ const GOTO_COMMANDS: Record<string, { url: string; desc: string }> = {
   'gt.repo': { url: APP_INFO.repository, desc: 'Open Devxy GitHub repository' },
   'gt.github': { url: 'https://github.com', desc: 'Open GitHub homepage' },
   'gt.author': { url: APP_INFO.author.website, desc: 'Open author website' },
+  'gt.sponsor': { url: APP_INFO.support.githubSponsors, desc: 'Support Devxy via GitHub Sponsors' },
 };
 
 const WELCOME_MESSAGE_DESKTOP = `
@@ -401,6 +404,12 @@ export function Terminal() {
       return;
     }
 
+    // Sponsor command (text version for terminal)
+    if (lowerCmd === 'sponsor') {
+      addOutput('info', getSponsorInfo());
+      return;
+    }
+
     // Goto commands (gt.xxx)
     const gotoCommand = GOTO_COMMANDS[lowerCmd];
     if (gotoCommand) {
@@ -447,7 +456,7 @@ export function Terminal() {
       const gotoHelpText = Object.entries(GOTO_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  sponsor              Show sponsor and support information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
       return;
     }
 
@@ -758,6 +767,7 @@ export function Terminal() {
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
       { name: 'about', type: 'utility' as const, desc: 'Show version and author information' },
+      { name: 'sponsor', type: 'utility' as const, desc: 'Show sponsor and support information' },
       { name: 'embed(name, url)', type: 'utility' as const, desc: 'Add a new embedded tool' },
       { name: 'regex(pattern, text)', type: 'utility' as const, desc: 'Validate regex pattern against text' },
       { name: 'help', type: 'utility' as const, desc: 'Show available commands' },
@@ -1427,6 +1437,7 @@ export function Terminal() {
             {isMobile ? 'Tab • ↑↓ • Tools ↗' : '/ Commands • ↑↓ Navigate • Tab/Enter Select • Esc Close • Ctrl+L Clear • Ctrl+E Toggle Panel'}
           </span>
           <div className="flex items-center gap-3">
+            <SponsorBadge />
             <a 
               href={APP_INFO.repository}
               target="_blank"

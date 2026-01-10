@@ -6,10 +6,15 @@ export const APP_INFO = {
     name: 'Tales Marinho Godois',
     website: 'https://mgodois.com',
     github: 'https://github.com/mgodois',
+    email: 'tales@mgodois.com',
   },
   repository: 'https://github.com/mgodois/devxy',
   website: 'https://devxy.mgodois.com',
   license: 'MIT',
+  support: {
+    githubSponsors: 'https://github.com/sponsors/mgodois',
+    buyMeACoffee: 'https://buymeacoffee.com/mgodois',
+  },
 } as const;
 
 export const getAboutInfo = (): string => {
