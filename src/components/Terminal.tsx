@@ -284,8 +284,18 @@ export function Terminal() {
     return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, [showVisualPanel]);
 
+  // Limit output to prevent memory issues (keep last 500 lines)
+  const MAX_OUTPUT_LINES = 500;
+  
   const addOutput = (type: OutputLine['type'], content: string) => {
-    setOutput(prev => [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }]);
+    setOutput(prev => {
+      const newOutput = [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }];
+      // Trim if exceeds limit
+      if (newOutput.length > MAX_OUTPUT_LINES) {
+        return newOutput.slice(-MAX_OUTPUT_LINES);
+      }
+      return newOutput;
+    });
   };
 
   const executeCommand = async (cmdStr: string, pipedInput?: string): Promise<string | null> => {
@@ -360,9 +370,12 @@ export function Terminal() {
     return null;
   };
 
+  // Limit result history to prevent memory issues
+  const MAX_RESULT_HISTORY = 100;
+  
   const addResultToHistory = (result: string) => {
-    resultHistoryRef.current = [...resultHistoryRef.current, result];
-    setResultHistory(prev => [...prev, result]);
+    resultHistoryRef.current = [...resultHistoryRef.current.slice(-MAX_RESULT_HISTORY + 1), result];
+    setResultHistory(prev => [...prev.slice(-MAX_RESULT_HISTORY + 1), result]);
   };
 
   const processCommand = async (cmd: string) => {
