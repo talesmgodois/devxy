@@ -8,6 +8,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 import { MobileFAB } from './MobileFAB';
 import { useEmbeddedTools, getEmbeddedToolsStatic, EmbeddedTool } from '@/hooks/use-embedded-tools';
+import { useBookmarks, getBookmarksStatic, getBookmarkByIdStatic, getBookmarkByShortcutStatic } from '@/hooks/use-bookmarks';
 import { APP_INFO, getAboutInfo } from '@/config/appInfo';
 import { getSponsorInfo, SUPPORT_LINKS } from '@/config/sponsors';
 import { SponsorBadge } from './AdWrapper';
@@ -208,6 +209,7 @@ const saveHistoryToStorage = (history: { cmd: string; timestamp: Date }[]) => {
 export function Terminal() {
   const isMobile = useIsMobile();
   const { tools: embeddedTools, addTool: addEmbeddedTool } = useEmbeddedTools();
+  const { addBookmark, removeBookmark, recordUsage } = useBookmarks();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [history, setHistory] = useState<{ cmd: string; timestamp: Date }[]>(() => loadHistoryFromStorage());
@@ -456,7 +458,11 @@ export function Terminal() {
       const gotoHelpText = Object.entries(GOTO_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  sponsor              Show sponsor and support information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
+      const bookmarksList = getBookmarksStatic();
+      const bookmarkHelpText = bookmarksList.length > 0
+        ? bookmarksList.slice(0, 5).map((bk) => `  bk.${bk.id.padEnd(17)} 🔖 ${bk.name}`).join('\n') + (bookmarksList.length > 5 ? `\n  ... and ${bookmarksList.length - 5} more (use bk.list)` : '')
+        : '  (none yet - use bk.add(name, url) or v.bookmarks)';
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nBookmark commands (bk.*):\n\n  bk.list              List all bookmarks\n  bk.add(name, url)    Add new bookmark\n  bk.add(n, url, cat)  Add with category\n  bk.rm(id)            Remove bookmark\n  bk.<name>            Open bookmark in new tab\n  bk.1-9               Open by shortcut key\n  bk.search(query)     Search bookmarks\n  bk.cat(category)     List by category\n  bk.export            Export to clipboard\n  v.bookmarks          Open bookmark manager\n\nYour bookmarks:\n\n${bookmarkHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  sponsor              Show sponsor and support information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  bk.add(GitHub, https://github.com)   Add GitHub bookmark\n  bk.github            Open GitHub bookmark\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
       return;
     }
 
@@ -546,6 +552,168 @@ export function Terminal() {
         }
       }
       addOutput('error', `Interpreter not found: '${cmd}'. Available: ${Object.keys(EMBEDDED_INTERPRETERS).map(t => 'ei.' + t).join(', ')}`);
+      return;
+    }
+
+    // Bookmark commands (bk.*)
+    if (lowerCmd.startsWith('bk.')) {
+      const bookmarksList = getBookmarksStatic();
+      
+      // bk.list - list all bookmarks
+      if (lowerCmd === 'bk.list') {
+        if (bookmarksList.length === 0) {
+          addOutput('info', '🔖 No bookmarks yet. Add one with: bk.add(name, url) or v.bookmarks');
+          return;
+        }
+        const grouped = bookmarksList.reduce((acc, bk) => {
+          const cat = bk.category || 'uncategorized';
+          if (!acc[cat]) acc[cat] = [];
+          acc[cat].push(bk);
+          return acc;
+        }, {} as Record<string, typeof bookmarksList>);
+        
+        let output = '🔖 Bookmarks:\n';
+        for (const [category, bks] of Object.entries(grouped)) {
+          output += `\n  [${category}]\n`;
+          for (const bk of bks) {
+            const shortcut = bk.shortcut ? ` (⌨${bk.shortcut})` : '';
+            output += `    bk.${bk.id.padEnd(15)} ${bk.name}${shortcut}\n`;
+          }
+        }
+        addOutput('info', output);
+        return;
+      }
+      
+      // bk.search(query) - search bookmarks
+      const searchMatch = lowerCmd.match(/^bk\.search\((.+)\)$/);
+      if (searchMatch) {
+        const query = searchMatch[1].replace(/^["']|["']$/g, '').trim();
+        const results = bookmarksList.filter(b => 
+          b.id.includes(query.toLowerCase()) ||
+          b.name.toLowerCase().includes(query.toLowerCase()) ||
+          b.url.toLowerCase().includes(query.toLowerCase()) ||
+          b.category?.includes(query.toLowerCase()) ||
+          b.tags?.some(t => t.includes(query.toLowerCase()))
+        );
+        
+        if (results.length === 0) {
+          addOutput('info', `🔖 No bookmarks found matching "${query}"`);
+          return;
+        }
+        
+        const output = results.map(bk => 
+          `  bk.${bk.id.padEnd(15)} ${bk.name} → ${bk.url}`
+        ).join('\n');
+        addOutput('info', `🔖 Search results for "${query}":\n\n${output}`);
+        return;
+      }
+      
+      // bk.cat(category) - list by category
+      const catMatch = lowerCmd.match(/^bk\.cat\((.+)\)$/);
+      if (catMatch) {
+        const category = catMatch[1].replace(/^["']|["']$/g, '').trim().toLowerCase();
+        const results = bookmarksList.filter(b => b.category?.toLowerCase() === category);
+        
+        if (results.length === 0) {
+          addOutput('info', `🔖 No bookmarks in category "${category}"`);
+          return;
+        }
+        
+        const output = results.map(bk => 
+          `  bk.${bk.id.padEnd(15)} ${bk.name}`
+        ).join('\n');
+        addOutput('info', `🔖 Bookmarks in "${category}":\n\n${output}`);
+        return;
+      }
+      
+      // bk.export - export bookmarks
+      if (lowerCmd === 'bk.export') {
+        if (bookmarksList.length === 0) {
+          addOutput('info', '🔖 No bookmarks to export.');
+          return;
+        }
+        const data = JSON.stringify(bookmarksList, null, 2);
+        navigator.clipboard.writeText(data);
+        addOutput('result', `🔖 Exported ${bookmarksList.length} bookmarks to clipboard!`);
+        return;
+      }
+      
+      // bk.1-9 - open by shortcut
+      const shortcutMatch = lowerCmd.match(/^bk\.([1-9])$/);
+      if (shortcutMatch) {
+        const num = parseInt(shortcutMatch[1], 10);
+        const bookmark = getBookmarkByShortcutStatic(num);
+        if (bookmark) {
+          window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+          recordUsage(bookmark.id);
+          addOutput('result', `🔖 Opening ${bookmark.name}... (shortcut ${num})`);
+          return;
+        }
+        addOutput('error', `No bookmark assigned to shortcut ${num}. Use v.bookmarks to assign shortcuts.`);
+        return;
+      }
+      
+      // bk.<name> - open bookmark by id
+      const nameMatch = lowerCmd.match(/^bk\.(\w+)$/);
+      if (nameMatch) {
+        const bookmarkId = nameMatch[1];
+        const bookmark = getBookmarkByIdStatic(bookmarkId);
+        if (bookmark) {
+          window.open(bookmark.url, '_blank', 'noopener,noreferrer');
+          recordUsage(bookmark.id);
+          addOutput('result', `🔖 Opening ${bookmark.name}...`);
+          return;
+        }
+        // Show available bookmarks
+        const available = bookmarksList.slice(0, 5).map(b => 'bk.' + b.id).join(', ');
+        addOutput('error', `Bookmark not found: 'bk.${bookmarkId}'.${available ? ` Try: ${available}` : ' No bookmarks yet. Use bk.add(name, url) or v.bookmarks.'}`);
+        return;
+      }
+      
+      addOutput('error', `Invalid bookmark command. Try: bk.list, bk.add(name, url), bk.<name>, or bk.1-9`);
+      return;
+    }
+    
+    // bk.add(name, url) or bk.add(name, url, category) - add bookmark
+    const bkAddMatch = trimmedCmd.match(/^bk\.add\(\s*([^,]+?)\s*,\s*([^,]+?)(?:\s*,\s*(.+?))?\s*\)$/i);
+    if (bkAddMatch) {
+      const [, name, url, category] = bkAddMatch;
+      const cleanName = name.replace(/^["']|["']$/g, '').trim();
+      const cleanUrl = url.replace(/^["']|["']$/g, '').trim();
+      const cleanCategory = category?.replace(/^["']|["']$/g, '').trim();
+      
+      if (!cleanName) {
+        addOutput('error', 'Error: Bookmark name cannot be empty.');
+        return;
+      }
+      
+      if (!cleanUrl) {
+        addOutput('error', 'Error: Bookmark URL cannot be empty.');
+        return;
+      }
+      
+      const result = addBookmark(cleanName, cleanUrl, cleanCategory);
+      if (result.success) {
+        addOutput('result', `✅ Bookmark "${cleanName}" added!\n   Open with: bk.${result.id}`);
+      } else {
+        addOutput('error', `Error: ${result.error}`);
+      }
+      return;
+    }
+    
+    // bk.rm(id) - remove bookmark
+    const bkRmMatch = trimmedCmd.match(/^bk\.rm\(\s*(.+?)\s*\)$/i);
+    if (bkRmMatch) {
+      const bookmarkId = bkRmMatch[1].replace(/^["']|["']$/g, '').trim().toLowerCase();
+      const bookmark = getBookmarkByIdStatic(bookmarkId);
+      
+      if (!bookmark) {
+        addOutput('error', `Bookmark "${bookmarkId}" not found.`);
+        return;
+      }
+      
+      removeBookmark(bookmarkId);
+      addOutput('result', `🗑️ Bookmark "${bookmark.name}" removed.`);
       return;
     }
 
@@ -756,6 +924,7 @@ export function Terminal() {
 
   const getAllCommands = () => {
     const embeddedToolsList = getEmbeddedToolsStatic();
+    const bookmarksList = getBookmarksStatic();
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
@@ -763,6 +932,10 @@ export function Terminal() {
       ...embeddedToolsList.map(tool => ({ name: `ve.${tool.id}`, type: 'embed' as const, desc: tool.description || tool.name })),
       ...Object.keys(EMBEDDED_INTERPRETERS).map(lang => ({ name: `ei.${lang}`, type: 'interpreter' as const, desc: EMBEDDED_INTERPRETERS[lang].description })),
       ...Object.keys(GOTO_COMMANDS).map(cmd => ({ name: cmd, type: 'navigation' as const, desc: GOTO_COMMANDS[cmd].desc })),
+      ...bookmarksList.map(bk => ({ name: `bk.${bk.id}`, type: 'bookmark' as const, desc: `Open ${bk.name}` })),
+      { name: 'bk.list', type: 'bookmark' as const, desc: 'List all bookmarks' },
+      { name: 'bk.add(name, url)', type: 'bookmark' as const, desc: 'Add a new bookmark' },
+      { name: 'bk.search(query)', type: 'bookmark' as const, desc: 'Search bookmarks' },
       { name: 'gt <url>', type: 'navigation' as const, desc: 'Open any URL in a new tab' },
       { name: 'latest', type: 'history' as const, desc: 'Get last command result' },
       { name: 'recent', type: 'history' as const, desc: 'Show last 20 commands with timestamps' },
