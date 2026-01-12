@@ -6,6 +6,7 @@ export { HelpVisualTool } from './HelpVisualTool';
 export { EmbedManager } from './EmbedManager';
 export { EmbedViewer } from './EmbedViewer';
 export { AboutVisualTool } from './AboutVisualTool';
+export { BookmarkManager } from './BookmarkManager';
 
 export interface VisualTool {
   name: string;
@@ -21,6 +22,7 @@ import { JsonFormatter as JsonComp } from './JsonFormatter';
 import { HelpVisualTool as HelpComp } from './HelpVisualTool';
 import { EmbedManager as EmbedComp } from './EmbedManager';
 import { AboutVisualTool as AboutComp } from './AboutVisualTool';
+import { BookmarkManager as BookmarkComp } from './BookmarkManager';
 
 export const VISUAL_TOOLS: Record<string, VisualTool> = {
   temp: {
@@ -64,5 +66,11 @@ export const VISUAL_TOOLS: Record<string, VisualTool> = {
     component: AboutComp,
     description: 'Version & author information',
     icon: 'ℹ️',
+  },
+  bookmarks: {
+    name: 'bookmarks',
+    component: BookmarkComp,
+    description: 'Manage quick-access bookmarks',
+    icon: '🔖',
   },
 };
