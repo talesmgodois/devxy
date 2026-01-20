@@ -7,6 +7,7 @@ export { EmbedManager } from './EmbedManager';
 export { EmbedViewer } from './EmbedViewer';
 export { AboutVisualTool } from './AboutVisualTool';
 export { BookmarkManager } from './BookmarkManager';
+export { MockGenerator } from './MockGenerator';
 
 export interface VisualTool {
   name: string;
@@ -23,6 +24,7 @@ import { HelpVisualTool as HelpComp } from './HelpVisualTool';
 import { EmbedManager as EmbedComp } from './EmbedManager';
 import { AboutVisualTool as AboutComp } from './AboutVisualTool';
 import { BookmarkManager as BookmarkComp } from './BookmarkManager';
+import { MockGenerator as MockComp } from './MockGenerator';
 
 export const VISUAL_TOOLS: Record<string, VisualTool> = {
   temp: {
@@ -72,5 +74,11 @@ export const VISUAL_TOOLS: Record<string, VisualTool> = {
     component: BookmarkComp,
     description: 'Manage quick-access bookmarks',
     icon: '🔖',
+  },
+  mock: {
+    name: 'mock',
+    component: MockComp,
+    description: 'Mock data generator (JSON)',
+    icon: '🎲',
   },
 };

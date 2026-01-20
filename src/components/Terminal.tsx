@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
 import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
+import { parseFieldsString, generateMocks, formatMocksAsJson } from '@/utils/mockGenerator';
 import { VISUAL_TOOLS } from './visual-tools';
 import { EmbedViewer } from './visual-tools/EmbedViewer';
 import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
@@ -72,6 +73,44 @@ const GENERATOR_COMMANDS: Record<string, GeneratorCommand> = {
   'r.user': { fn: generateUserName, desc: 'Generate random username [-n count]' },
   'r.nick': { fn: generateNickName, desc: 'Generate random nickname [-n count]' },
   'r.email': { fn: generateEmail, desc: 'Generate random email address [-n count]' },
+};
+
+// Parse r.mock command arguments
+const parseMockArgs = (argsStr: string): { fields: string; count: number } | null => {
+  const args = { fields: '', count: 5 };
+  const tokens = argsStr.trim().split(/\s+/);
+  
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '--fields' || token === '-f') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        // Handle quoted strings
+        if (next.startsWith('"')) {
+          let fieldValue = next.slice(1);
+          i++;
+          while (i + 1 < tokens.length && !tokens[i].endsWith('"')) {
+            fieldValue += ' ' + tokens[++i];
+          }
+          args.fields = fieldValue.replace(/"$/, '');
+        } else {
+          args.fields = next;
+          i++;
+        }
+      }
+    } else if (token === '--count' || token === '-c') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        const num = parseInt(next, 10);
+        if (!isNaN(num) && num > 0 && num <= 100) {
+          args.count = num;
+          i++;
+        }
+      }
+    }
+  }
+  
+  return args.fields ? args : null;
 };
 
 // Pipe commands (accept input from previous command or argument)
@@ -409,6 +448,54 @@ export function Terminal() {
     // Sponsor command (text version for terminal)
     if (lowerCmd === 'sponsor') {
       addOutput('info', getSponsorInfo());
+      return;
+    }
+
+    // r.mock command - generate mock JSON data
+    if (lowerCmd.startsWith('r.mock')) {
+      const argsStr = trimmedCmd.slice(6).trim();
+      const mockArgs = parseMockArgs(argsStr);
+      
+      if (!mockArgs) {
+        addOutput('info', `🎲 Mock Data Generator
+
+Usage: r.mock --fields "field1:type,field2:type" [--count N]
+
+Options:
+  -f, --fields    Field definitions (required)
+  -c, --count     Number of records (default: 5, max: 100)
+
+Available types:
+  string, number, boolean, uuid, email
+  name, date, phone, url, address, company
+
+Aliases:
+  str/text → string    int/num → number
+  bool → boolean       id → uuid
+  mail → email         tel → phone
+
+Examples:
+  r.mock --fields "id:uuid,nome:name,email:email" --count 3
+  r.mock -f "age:number,active:boolean" -c 10
+
+Visual tool: v.mock`);
+        return;
+      }
+      
+      try {
+        const fields = parseFieldsString(mockArgs.fields);
+        if (fields.length === 0) {
+          addOutput('error', 'Error: No valid fields provided. Use format: "field1:type,field2:type"');
+          return;
+        }
+        
+        const mocks = generateMocks(fields, mockArgs.count);
+        const jsonOutput = formatMocksAsJson(mocks);
+        addOutput('result', `🎲 Generated ${mockArgs.count} mock record(s):\n\n${jsonOutput}`);
+        addResultToHistory(jsonOutput);
+      } catch (e) {
+        addOutput('error', `Error generating mocks: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
       return;
     }
 
@@ -927,6 +1014,7 @@ export function Terminal() {
     const bookmarksList = getBookmarksStatic();
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
+      { name: 'r.mock', type: 'generator' as const, desc: 'Generate mock JSON data (--fields, --count)' },
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
       ...embeddedToolsList.map(tool => ({ name: `ve.${tool.id}`, type: 'embed' as const, desc: tool.description || tool.name })),
