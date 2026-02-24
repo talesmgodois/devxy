@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { generateCPF, generateCNPJ, generateTituloEleitor, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
+import { generateCPF, generateCNPJ, generateTituloEleitor, generateRG, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
 import { parseFieldsString, generateMocks, formatMocksAsJson } from '@/utils/mockGenerator';
 import { VISUAL_TOOLS } from './visual-tools';
 import { EmbedViewer } from './visual-tools/EmbedViewer';
@@ -55,6 +55,9 @@ const unformatCPF = (cpf: string): string => cpf.replace(/[.\-]/g, '');
 // Remove formatting from CNPJ (XX.XXX.XXX/XXXX-XX -> XXXXXXXXXXXXXX)
 const unformatCNPJ = (cnpj: string): string => cnpj.replace(/[.\-\/]/g, '');
 
+// Remove formatting from RG (XX.XXX.XXX-X -> XXXXXXXXX)
+const unformatRG = (rg: string): string => rg.replace(/[.\-]/g, '');
+
 // Remove formatting from Titulo Eleitor (XXXXXXXX XXXX -> XXXXXXXXXXXX)
 const unformatTituloEleitor = (titulo: string): string => titulo.replace(/\s/g, '');
 
@@ -69,6 +72,7 @@ interface GeneratorCommand {
 const GENERATOR_COMMANDS: Record<string, GeneratorCommand> = {
   'r.cpf': { fn: generateCPF, desc: 'Generate random Brazilian CPF [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatCPF },
   'r.cnpj': { fn: generateCNPJ, desc: 'Generate random Brazilian CNPJ [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatCNPJ },
+  'r.rg': { fn: generateRG, desc: 'Generate random Brazilian RG [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatRG },
   'r.titulo': { fn: generateTituloEleitor, desc: 'Generate random Brazilian Titulo Eleitoral [-f formatted] [-n count]', supportsFormatted: true, unformat: unformatTituloEleitor },
   'r.user': { fn: generateUserName, desc: 'Generate random username [-n count]' },
   'r.nick': { fn: generateNickName, desc: 'Generate random nickname [-n count]' },
