@@ -67,6 +67,18 @@ export function generateTituloEleitor(): string {
   return `${seq.join('')} ${state.join('')}${firstVerifier}${secondVerifier}`;
 }
 
+// Brazilian RG Generator
+export function generateRG(): string {
+  const digits = Array.from({ length: 8 }, () => Math.floor(Math.random() * 10));
+  const weights = [2, 3, 4, 5, 6, 7, 8, 9];
+  const sum = digits.reduce((acc, digit, i) => acc + digit * weights[i], 0);
+  const remainder = sum % 11;
+  const verifier = remainder === 0 ? 0 : remainder === 1 ? 'X' : 11 - remainder;
+  digits.push(verifier as number);
+
+  return `${digits.slice(0, 2).join('')}.${digits.slice(2, 5).join('')}.${digits.slice(5, 8).join('')}-${verifier}`;
+}
+
 // Username Generator
 const adjectives = ['swift', 'bright', 'dark', 'silent', 'wild', 'calm', 'bold', 'quick', 'sharp', 'cool', 'epic', 'mega', 'ultra', 'cyber', 'neo', 'quantum', 'pixel', 'code', 'dev', 'hack'];
 const nouns = ['wolf', 'hawk', 'tiger', 'storm', 'blade', 'star', 'shadow', 'flame', 'frost', 'thunder', 'ninja', 'coder', 'byte', 'node', 'stack', 'kernel', 'matrix', 'vector', 'pulse', 'nexus'];
