@@ -72,28 +72,28 @@ jobs:
     outputs:
       image: ${{ steps.image.outputs.name }}
 
-  # deploy:
-  #   name: Trigger Coolify deployment
-  #   needs: build-and-publish
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Call Coolify deploy webhook
-  #       env:
-  #         COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
-  #         COOLIFY_WEBHOOK_TOKEN: ${{ secrets.COOLIFY_WEBHOOK_TOKEN }}
-  #       run: |
-  #         if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
-  #           echo "Secret COOLIFY_WEBHOOK_URL is not set - skipping deploy trigger."
-  #           exit 0
-  #         fi
+  deploy:
+    name: Trigger Coolify deployment
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Coolify deploy webhook
+        env:
+          COOLIFY_WEBHOOK_URL: ${{ secrets.COOLIFY_WEBHOOK_URL }}
+          COOLIFY_WEBHOOK_TOKEN: ${{ secrets.COOLIFY_WEBHOOK_TOKEN }}
+        run: |
+          if [ -z "$COOLIFY_WEBHOOK_URL" ]; then
+            echo "Secret COOLIFY_WEBHOOK_URL is not set - skipping deploy trigger."
+            exit 0
+          fi
 
-  #         if [ -n "$COOLIFY_WEBHOOK_TOKEN" ]; then
-  #           curl --fail --silent --show-error --location \
-  #             --request POST "$COOLIFY_WEBHOOK_URL" \
-  #             --header "Authorization: Bearer $COOLIFY_WEBHOOK_TOKEN"
-  #         else
-  #           curl --fail --silent --show-error --location \
-  #             --request POST "$COOLIFY_WEBHOOK_URL"
-  #         fi
+          if [ -n "$COOLIFY_WEBHOOK_TOKEN" ]; then
+            curl --fail --silent --show-error --location \
+              --request POST "$COOLIFY_WEBHOOK_URL" \
+              --header "Authorization: Bearer $COOLIFY_WEBHOOK_TOKEN"
+          else
+            curl --fail --silent --show-error --location \
+              --request POST "$COOLIFY_WEBHOOK_URL"
+          fi
 
-  #         echo "Coolify deployment triggered."
+          echo "Coolify deployment triggered."

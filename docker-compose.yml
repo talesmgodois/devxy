@@ -1,7 +1,7 @@
 services:
   app:
     build: .
-    image: devxy:${APP_VERSION:-latest}
+    image: talesmgodois/devxy:${APP_VERSION:-latest}
     ports:
       - "8080:8080"
     restart: unless-stopped
