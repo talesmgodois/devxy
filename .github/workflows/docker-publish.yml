@@ -28,7 +28,7 @@ jobs:
             echo "::error::Secret DOCKERHUB_USERNAME is not set. Add it under Settings > Secrets and variables > Actions."
             exit 1
           fi
-          NAME="${DOCKERHUB_IMAGE_NAME:-upvote-embed}"
+          NAME="${DOCKERHUB_IMAGE_NAME:-devxy}"
           echo "name=${DOCKERHUB_USERNAME}/${NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Set up QEMU
