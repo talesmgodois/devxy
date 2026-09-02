@@ -1,19 +1,19 @@
 export const APP_INFO = {
-  name: 'Devxy',
-  version: '1.0.0',
-  description: 'Developer toolkit aggregator - micro-tools for developers',
+  name: "Devxy",
+  version: "1.0.0",
+  description: "Developer toolkit aggregator - micro-tools for developers",
   author: {
-    name: 'Tales Marinho Godois',
-    website: 'https://mgodois.com',
-    github: 'https://github.com/talesmgodois',
-    email: 'tales@mgodois.com',
+    name: "Tales Marinho Godois",
+    website: "https://pro.mgodois.com",
+    github: "https://github.com/talesmgodois",
+    email: "tales@mgodois.com",
   },
-  repository: 'https://github.com/talesmgodois/devxy',
-  website: 'https://devxy.mgodois.com',
-  license: 'MIT',
+  repository: "https://github.com/talesmgodois/devxy",
+  website: "https://devxy.mgodois.com",
+  license: "MIT",
   support: {
-    githubSponsors: 'https://github.com/sponsors/talesmgodois',
-    buyMeACoffee: 'https://buymeacoffee.com/mgodois',
+    githubSponsors: "https://github.com/sponsors/talesmgodois",
+    buyMeACoffee: "https://buymeacoffee.com/mgodois",
   },
 } as const;
 

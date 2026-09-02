@@ -69,7 +69,7 @@ Contributions are welcome! Feel free to open issues or submit pull requests.
 
 **Tales Marinho Godois**
 
-- Website: [mgodois.com](https://mgodois.com)
+- Website: [mgodois.com](https://pro.mgodois.com)
 - GitHub: [@talesmgodois](https://github.com/talesmgodois)
 
 ## License
