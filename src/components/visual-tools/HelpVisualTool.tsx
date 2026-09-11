@@ -39,6 +39,7 @@ export function HelpVisualTool() {
           { name: 'r.user', desc: 'Generate random username [-n count]' },
           { name: 'r.nick', desc: 'Generate random nickname [-n count]' },
           { name: 'r.email', desc: 'Generate random email address [-n count]' },
+          { name: 'r.raffle', desc: 'Draw random number in a range [-x exclude] [-n count]' },
         ],
       },
       {
@@ -64,6 +65,7 @@ export function HelpVisualTool() {
           { name: 'v.embeds', desc: 'Manage embedded URL tools' },
           { name: 'v.about', desc: 'Version & author information' },
           { name: 'v.help', desc: 'This help reference' },
+          { name: 'v.raffle', desc: 'Random raffle number generator' },
         ],
       },
       {
@@ -237,6 +239,10 @@ export function HelpVisualTool() {
               <div className="flex gap-2">
                 <code className="text-primary">r.cpf | xc</code>
                 <span className="text-muted-foreground">→ Generate and copy to clipboard</span>
+              </div>
+              <div className="flex gap-2">
+                <code className="text-primary">r.raffle 1 60 -x 13,27</code>
+                <span className="text-muted-foreground">→ Draw 1-60, excluding 13 and 27</span>
               </div>
             </div>
           </div>

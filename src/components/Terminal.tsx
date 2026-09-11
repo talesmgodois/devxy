@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent } from 'react';
-import { generateCPF, generateCNPJ, generateTituloEleitor, generateRG, generateUserName, generateNickName, generateEmail } from '@/utils/generators';
+import { generateCPF, generateCNPJ, generateTituloEleitor, generateRG, generateUserName, generateNickName, generateEmail, generateRaffleNumber } from '@/utils/generators';
 import { parseFieldsString, generateMocks, formatMocksAsJson } from '@/utils/mockGenerator';
 import { VISUAL_TOOLS } from './visual-tools';
 import { EmbedViewer } from './visual-tools/EmbedViewer';
@@ -115,6 +115,59 @@ const parseMockArgs = (argsStr: string): { fields: string; count: number } | nul
   }
   
   return args.fields ? args : null;
+};
+
+// Parse r.raffle command arguments
+interface RaffleArgs {
+  start: number;
+  end: number;
+  exclude: number[];
+  count: number;
+}
+
+const parseRaffleArgs = (argsStr: string): RaffleArgs | { error: string } => {
+  const tokens = argsStr.trim().split(/\s+/).filter(Boolean);
+  const positional: string[] = [];
+  const exclude: number[] = [];
+  let count = 1;
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '-x' || token === '--exclude') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        exclude.push(...next.split(',').map(n => parseInt(n.trim(), 10)).filter(n => !isNaN(n)));
+        i++;
+      }
+    } else if (token === '-n' || token === '--number') {
+      const next = tokens[i + 1];
+      if (next && !next.startsWith('-')) {
+        const num = parseInt(next, 10);
+        if (!isNaN(num) && num > 0 && num <= 100) {
+          count = num;
+          i++;
+        }
+      }
+    } else if (!token.startsWith('-')) {
+      positional.push(token);
+    }
+  }
+
+  if (positional.length < 2) {
+    return { error: 'Missing start and/or end number.' };
+  }
+
+  const start = parseInt(positional[0], 10);
+  const end = parseInt(positional[1], 10);
+
+  if (isNaN(start) || isNaN(end)) {
+    return { error: 'Start and end must be valid integers.' };
+  }
+  if (start > end) {
+    return { error: `Start (${start}) must be less than or equal to end (${end}).` };
+  }
+
+  return { start, end, exclude, count };
 };
 
 // Pipe commands (accept input from previous command or argument)
@@ -503,6 +556,45 @@ Visual tool: v.mock`);
       return;
     }
 
+    // r.raffle command - draw random number(s) within a range, with optional exclusions
+    if (lowerCmd.startsWith('r.raffle')) {
+      const argsStr = trimmedCmd.slice('r.raffle'.length).trim();
+
+      if (!argsStr) {
+        addOutput('info', `🎟️ Raffle Number Generator
+
+Usage: r.raffle <start> <end> [-x n1,n2,...] [-n count]
+
+Options:
+  -x, --exclude   Comma-separated numbers to exclude from the draw
+  -n, --number    Number of independent draws (default: 1, max: 100)
+
+Examples:
+  r.raffle 1 100               Draw a number between 1 and 100
+  r.raffle 1 60 -x 13,27       Draw between 1 and 60, excluding 13 and 27
+  r.raffle 1 10 -n 5           Draw 5 independent numbers between 1 and 10`);
+        return;
+      }
+
+      const raffleArgs = parseRaffleArgs(argsStr);
+      if ('error' in raffleArgs) {
+        addOutput('error', `Error: ${raffleArgs.error}\n\nUsage: r.raffle <start> <end> [-x n1,n2,...] [-n count]`);
+        return;
+      }
+
+      const { start, end, exclude, count } = raffleArgs;
+      try {
+        const results = Array.from({ length: count }, () => generateRaffleNumber(start, end, exclude));
+        const resultText = results.join('\n');
+        const excludeText = exclude.length ? `, excluding ${exclude.join(', ')}` : '';
+        addOutput('result', `🎟️ Raffle result (${start}-${end}${excludeText}):\n\n${resultText}`);
+        addResultToHistory(resultText);
+      } catch (e) {
+        addOutput('error', `Error: ${e instanceof Error ? e.message : 'Unable to draw a number'}`);
+      }
+      return;
+    }
+
     // Goto commands (gt.xxx)
     const gotoCommand = GOTO_COMMANDS[lowerCmd];
     if (gotoCommand) {
@@ -532,7 +624,7 @@ Visual tool: v.mock`);
     if (lowerCmd === 'help') {
       const genHelpText = Object.entries(GENERATOR_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
-        .join('\n');
+        .join('\n') + `\n  ${'r.raffle'.padEnd(20)} Draw random number in a range [-x exclude] [-n count]`;
       const pipeHelpText = Object.entries(PIPE_COMMANDS)
         .map(([name, { desc }]) => `  ${name.padEnd(20)} ${desc}`)
         .join('\n');
@@ -553,7 +645,7 @@ Visual tool: v.mock`);
       const bookmarkHelpText = bookmarksList.length > 0
         ? bookmarksList.slice(0, 5).map((bk) => `  bk.${bk.id.padEnd(17)} 🔖 ${bk.name}`).join('\n') + (bookmarksList.length > 5 ? `\n  ... and ${bookmarksList.length - 5} more (use bk.list)` : '')
         : '  (none yet - use bk.add(name, url) or v.bookmarks)';
-      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nBookmark commands (bk.*):\n\n  bk.list              List all bookmarks\n  bk.add(name, url)    Add new bookmark\n  bk.add(n, url, cat)  Add with category\n  bk.rm(id)            Remove bookmark\n  bk.<name>            Open bookmark in new tab\n  bk.1-9               Open by shortcut key\n  bk.search(query)     Search bookmarks\n  bk.cat(category)     List by category\n  bk.export            Export to clipboard\n  v.bookmarks          Open bookmark manager\n\nYour bookmarks:\n\n${bookmarkHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  sponsor              Show sponsor and support information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  gt google.com        Open Google in a new tab\n  bk.add(GitHub, https://github.com)   Add GitHub bookmark\n  bk.github            Open GitHub bookmark\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
+      addOutput('info', `Generator commands (r.*):\n\n${genHelpText}\n\nOptions:\n  -f, --formatted      Include formatting (CPF, CNPJ, Titulo)\n  -n, --number <n>     Generate n results (max 100)\n\nPipe commands:\n\n${pipeHelpText}\n\nNavigation commands (gt.*):\n\n  gt <url>             Open any URL in a new tab\n${gotoHelpText}\n\nBookmark commands (bk.*):\n\n  bk.list              List all bookmarks\n  bk.add(name, url)    Add new bookmark\n  bk.add(n, url, cat)  Add with category\n  bk.rm(id)            Remove bookmark\n  bk.<name>            Open bookmark in new tab\n  bk.1-9               Open by shortcut key\n  bk.search(query)     Search bookmarks\n  bk.cat(category)     List by category\n  bk.export            Export to clipboard\n  v.bookmarks          Open bookmark manager\n\nYour bookmarks:\n\n${bookmarkHelpText}\n\nVisual tools:\n\n${visualHelpText}\n\nEmbedded tools (ve.*):\n\n${embedHelpText}\n\nEmbedded interpreters:\n\n${interpreterHelpText}\n\nHistory:\n\n  latest               Get last command result\n  latest(i)            Get result at index i (0=latest)\n  latest(i,n)          Get n results starting from index i\n  recent               Show last 20 executed commands with timestamps\n  clearhistory         Clear stored command history\n\nUtility:\n\n  about                Show version and author information\n  sponsor              Show sponsor and support information\n  embed(name, url)     Add a new embedded tool (access via ve.name)\n  regex(pattern, text) Validate regex pattern against text\n  clear                Clear the terminal\n  help                 Show this help message\n\nExamples:\n  r.cpf                Generate unformatted CPF\n  r.cpf -f             Generate formatted CPF\n  r.cpf -n 5           Generate 5 unformatted CPFs\n  r.cpf -f -n 3        Generate 3 formatted CPFs\n  r.cpf | xc           Generate CPF and copy to clipboard\n  r.raffle 1 60 -x 13,27   Draw a number 1-60, excluding 13 and 27\n  gt google.com        Open Google in a new tab\n  bk.add(GitHub, https://github.com)   Add GitHub bookmark\n  bk.github            Open GitHub bookmark\n  embed(Figma, https://figma.com)   Add Figma as embedded tool\n  regex(\\\\d+, abc123)   Find numbers in text`);
       return;
     }
 
@@ -1019,6 +1111,7 @@ Visual tool: v.mock`);
     return [
       ...Object.keys(GENERATOR_COMMANDS).map(cmd => ({ name: cmd, type: 'generator' as const, desc: GENERATOR_COMMANDS[cmd].desc })),
       { name: 'r.mock', type: 'generator' as const, desc: 'Generate mock JSON data (--fields, --count)' },
+      { name: 'r.raffle', type: 'generator' as const, desc: 'Draw random number in a range (-x exclude, -n count)' },
       ...Object.keys(PIPE_COMMANDS).map(cmd => ({ name: cmd, type: 'pipe' as const, desc: PIPE_COMMANDS[cmd].desc })),
       ...Object.keys(VISUAL_TOOLS).map(tool => ({ name: `v.${tool}`, type: 'visual' as const, desc: VISUAL_TOOLS[tool].description })),
       ...embeddedToolsList.map(tool => ({ name: `ve.${tool.id}`, type: 'embed' as const, desc: tool.description || tool.name })),
@@ -1065,7 +1158,7 @@ Visual tool: v.mock`);
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
     
     const embeddedToolsList = getEmbeddedToolsStatic();
-    const allCommands = [...Object.keys(GENERATOR_COMMANDS), ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...embeddedToolsList.map(t => `ve.${t.id}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
+    const allCommands = [...Object.keys(GENERATOR_COMMANDS), 'r.mock', 'r.raffle', ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...embeddedToolsList.map(t => `ve.${t.id}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
     
     // Use fuzzy matching and sort by score
     const matches = allCommands

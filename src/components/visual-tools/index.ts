@@ -8,6 +8,7 @@ export { EmbedViewer } from './EmbedViewer';
 export { AboutVisualTool } from './AboutVisualTool';
 export { BookmarkManager } from './BookmarkManager';
 export { MockGenerator } from './MockGenerator';
+export { RaffleGenerator } from './RaffleGenerator';
 
 export interface VisualTool {
   name: string;
@@ -25,6 +26,7 @@ import { EmbedManager as EmbedComp } from './EmbedManager';
 import { AboutVisualTool as AboutComp } from './AboutVisualTool';
 import { BookmarkManager as BookmarkComp } from './BookmarkManager';
 import { MockGenerator as MockComp } from './MockGenerator';
+import { RaffleGenerator as RaffleComp } from './RaffleGenerator';
 
 export const VISUAL_TOOLS: Record<string, VisualTool> = {
   temp: {
@@ -80,5 +82,11 @@ export const VISUAL_TOOLS: Record<string, VisualTool> = {
     component: MockComp,
     description: 'Mock data generator (JSON)',
     icon: '🎲',
+  },
+  raffle: {
+    name: 'raffle',
+    component: RaffleComp,
+    description: 'Random raffle number generator',
+    icon: '🎟️',
   },
 };

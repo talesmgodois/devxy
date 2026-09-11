@@ -125,6 +125,21 @@ export function generateEmail(): string {
   const separator = Math.random() > 0.5 ? '.' : '_';
   const hasNumber = Math.random() > 0.5;
   const num = hasNumber ? Math.floor(Math.random() * 100) : '';
-  
+
   return `${first}${separator}${last}${num}@${domain}`;
+}
+
+// Raffle Number Generator - draws a random integer within [start, end], skipping excluded numbers
+export function generateRaffleNumber(start: number, end: number, exclude: number[] = []): number {
+  const excludeSet = new Set(exclude);
+  const pool: number[] = [];
+  for (let n = start; n <= end; n++) {
+    if (!excludeSet.has(n)) pool.push(n);
+  }
+
+  if (pool.length === 0) {
+    throw new Error(`No numbers available between ${start} and ${end} after exclusions`);
+  }
+
+  return pool[Math.floor(Math.random() * pool.length)];
 }
