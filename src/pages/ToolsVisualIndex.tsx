@@ -2,13 +2,33 @@ import { Link, useNavigate } from 'react-router-dom';
 import { VISUAL_TOOLS } from '@/components/visual-tools';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Seo, SITE_URL } from '@/components/Seo';
 
 const ToolsVisualIndex = () => {
   const navigate = useNavigate();
   const tools = Object.values(VISUAL_TOOLS);
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'Ferramentas Visuais - Devxy',
+    itemListElement: tools.map((tool, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: `v.${tool.name}`,
+      description: tool.description,
+      url: `${SITE_URL}/tools/visual/${tool.name}`,
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
+      <Seo
+        title="Ferramentas Visuais - Devxy"
+        description={`Explore as ${tools.length} ferramentas visuais do Devxy: geradores, conversores e formatadores para desenvolvedores. Grátis e sem cadastro.`}
+        path="/tools/visual"
+        jsonLd={jsonLd}
+      />
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-3 flex items-center gap-4">
           <Button

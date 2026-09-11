@@ -4,6 +4,7 @@ import { EMBEDDED_INTERPRETERS } from '@/components/embedded-interpreters';
 import { getEmbeddedToolsStatic } from '@/hooks/use-embedded-tools';
 import { EmbedViewer } from '@/components/visual-tools/EmbedViewer';
 import { ToolWrapper, NotFoundState } from '@/components/visual-tools/ToolPageChrome';
+import { Seo } from '@/components/Seo';
 
 type ToolType = 'v' | 've' | 'ei';
 
@@ -25,14 +26,22 @@ const VisualToolPage = () => {
     }
     const ToolComponent = visualTool.component;
     return (
-      <ToolWrapper
-        icon={visualTool.icon}
-        name={visualTool.name}
-        description={visualTool.description}
-        onBack={() => navigate('/')}
-      >
-        <ToolComponent />
-      </ToolWrapper>
+      <>
+        {/* Canonical URL for visual tools now lives at /tools/visual/:tool */}
+        <Seo
+          title={`v.${visualTool.name} - ${visualTool.description} | Devxy`}
+          description={`${visualTool.description}. Ferramenta visual gratuita do Devxy, console de micro-ferramentas para desenvolvedores.`}
+          path={`/tools/visual/${visualTool.name}`}
+        />
+        <ToolWrapper
+          icon={visualTool.icon}
+          name={visualTool.name}
+          description={visualTool.description}
+          onBack={() => navigate('/')}
+        >
+          <ToolComponent />
+        </ToolWrapper>
+      </>
     );
   }
 
@@ -44,18 +53,26 @@ const VisualToolPage = () => {
       return <NotFoundState message={`Embedded tool "${tool}" not found`} onBack={() => navigate('/')} />;
     }
     return (
-      <ToolWrapper
-        icon="🔗"
-        name={embeddedTool.name}
-        description={embeddedTool.description || 'Custom embedded tool'}
-        onBack={() => navigate('/')}
-      >
-        <EmbedViewer 
-          url={embeddedTool.url} 
-          name={embeddedTool.name} 
-          description={embeddedTool.description} 
+      <>
+        <Seo
+          title={`${embeddedTool.name} - Devxy`}
+          description={embeddedTool.description || 'Custom embedded tool'}
+          path={`/visual/ve/${embeddedTool.id}`}
+          noindex
         />
-      </ToolWrapper>
+        <ToolWrapper
+          icon="🔗"
+          name={embeddedTool.name}
+          description={embeddedTool.description || 'Custom embedded tool'}
+          onBack={() => navigate('/')}
+        >
+          <EmbedViewer
+            url={embeddedTool.url}
+            name={embeddedTool.name}
+            description={embeddedTool.description}
+          />
+        </ToolWrapper>
+      </>
     );
   }
 
@@ -67,14 +84,21 @@ const VisualToolPage = () => {
     }
     const InterpreterComponent = interpreter.component;
     return (
-      <ToolWrapper
-        icon={interpreter.icon}
-        name={interpreter.name}
-        description={interpreter.description}
-        onBack={() => navigate('/')}
-      >
-        <InterpreterComponent />
-      </ToolWrapper>
+      <>
+        <Seo
+          title={`${interpreter.name} - Devxy`}
+          description={interpreter.description}
+          path={`/visual/ei/${tool}`}
+        />
+        <ToolWrapper
+          icon={interpreter.icon}
+          name={interpreter.name}
+          description={interpreter.description}
+          onBack={() => navigate('/')}
+        >
+          <InterpreterComponent />
+        </ToolWrapper>
+      </>
     );
   }
 

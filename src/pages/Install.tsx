@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Download, Smartphone, CheckCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/use-pwa-install';
+import { Seo } from '@/components/Seo';
 
 const Install = () => {
   const { canInstall, isInstalled, isStandalone, promptInstall } = usePWAInstall();
@@ -13,9 +14,18 @@ const Install = () => {
     setIsIOS(isIOSDevice);
   }, []);
 
+  const seo = (
+    <Seo
+      title="Instalar Devxy - Console de Micro-Ferramentas"
+      description="Instale o Devxy como aplicativo no seu dispositivo para acesso rápido, inclusive offline."
+      path="/install"
+    />
+  );
+
   if (isStandalone) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center p-4">
+        {seo}
         <div className="max-w-md w-full text-center space-y-6">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
           <h1 className="text-2xl font-bold text-foreground">App Instalado!</h1>
@@ -35,6 +45,7 @@ const Install = () => {
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center p-4">
+      {seo}
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center space-y-4">
