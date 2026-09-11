@@ -4,7 +4,8 @@ import { parseFieldsString, generateMocks, formatMocksAsJson } from '@/utils/moc
 import { VISUAL_TOOLS } from './visual-tools';
 import { EmbedViewer } from './visual-tools/EmbedViewer';
 import { EMBEDDED_INTERPRETERS } from './embedded-interpreters';
-import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown, Github, Globe } from 'lucide-react';
+
+import { LayoutGrid, X, Terminal as TerminalIcon, ChevronDown, Github, Globe, SquareArrowOutUpRight } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from '@/components/ui/drawer';
 import { MobileFAB } from './MobileFAB';
@@ -29,7 +30,7 @@ interface CommandArgs {
 const parseArgs = (argsStr: string): CommandArgs => {
   const args: CommandArgs = { formatted: false, number: 1 };
   const tokens = argsStr.trim().split(/\s+/);
-  
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token === '-f' || token === '--formatted') {
@@ -45,7 +46,7 @@ const parseArgs = (argsStr: string): CommandArgs => {
       }
     }
   }
-  
+
   return args;
 };
 
@@ -83,7 +84,7 @@ const GENERATOR_COMMANDS: Record<string, GeneratorCommand> = {
 const parseMockArgs = (argsStr: string): { fields: string; count: number } | null => {
   const args = { fields: '', count: 5 };
   const tokens = argsStr.trim().split(/\s+/);
-  
+
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (token === '--fields' || token === '-f') {
@@ -113,7 +114,7 @@ const parseMockArgs = (argsStr: string): { fields: string; count: number } | nul
       }
     }
   }
-  
+
   return args.fields ? args : null;
 };
 
@@ -172,15 +173,15 @@ const parseRaffleArgs = (argsStr: string): RaffleArgs | { error: string } => {
 
 // Pipe commands (accept input from previous command or argument)
 const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; desc: string }> = {
-  xc: { 
+  xc: {
     fn: async (text: string) => {
       if (!text) return 'Error: Nothing to copy';
       await navigator.clipboard.writeText(text);
       return `Copied to clipboard: ${text}`;
-    }, 
-    desc: 'Copy input to clipboard' 
+    },
+    desc: 'Copy input to clipboard'
   },
-  xp: { 
+  xp: {
     fn: async () => {
       try {
         const text = await navigator.clipboard.readText();
@@ -188,8 +189,8 @@ const PIPE_COMMANDS: Record<string, { fn: (input: string) => Promise<string>; de
       } catch {
         return 'Error: Unable to read clipboard (permission denied)';
       }
-    }, 
-    desc: 'Paste from clipboard' 
+    },
+    desc: 'Paste from clipboard'
   },
   xl: {
     fn: async (text: string) => {
@@ -377,10 +378,10 @@ export function Terminal() {
         }
         return;
       }
-      
+
       // '/' shortcut to open command palette (only if not in input)
       if (document.activeElement === inputRef.current) return;
-      
+
       if (e.key === '/') {
         e.preventDefault();
         inputRef.current?.focus();
@@ -395,7 +396,7 @@ export function Terminal() {
 
   // Limit output to prevent memory issues (keep last 500 lines)
   const MAX_OUTPUT_LINES = 500;
-  
+
   const addOutput = (type: OutputLine['type'], content: string) => {
     setOutput(prev => {
       const newOutput = [...prev, { id: idCounter.current++, type, content, timestamp: new Date() }];
@@ -412,13 +413,13 @@ export function Terminal() {
     const parts = trimmed.split(/\s+/);
     const baseCmd = parts[0].toLowerCase();
     const argsStr = parts.slice(1).join(' ');
-    
+
     // Check if it's a generator command (r.xxx)
     const genCommand = GENERATOR_COMMANDS[baseCmd];
     if (genCommand) {
       const args = parseArgs(argsStr);
       const results: string[] = [];
-      
+
       for (let i = 0; i < args.number; i++) {
         let result = genCommand.fn();
         // If not formatted and command supports it, remove formatting
@@ -427,45 +428,45 @@ export function Terminal() {
         }
         results.push(result);
       }
-      
+
       return results.join('\n');
     }
-    
+
     // Check if it's a pipe command
     const pipeCommand = PIPE_COMMANDS[baseCmd];
     if (pipeCommand) {
       return await pipeCommand.fn(pipedInput || '');
     }
-    
+
     // Check for latest command
     if (baseCmd === 'latest') {
       const results = resultHistoryRef.current;
       if (results.length === 0) return 'No previous results';
       return results[results.length - 1];
     }
-    
+
     // Check for latest(index, count) pattern
     const latestMatch = baseCmd.match(/^latest\((\d+)(?:,\s*(\d+))?\)$/);
     if (latestMatch) {
       const results = resultHistoryRef.current;
       if (results.length === 0) return 'No previous results';
-      
+
       const index = parseInt(latestMatch[1], 10);
       const count = latestMatch[2] ? parseInt(latestMatch[2], 10) : 1;
-      
+
       // Index 0 = most recent, so we reverse the logic
       const startFromEnd = results.length - 1 - index;
-      
+
       if (startFromEnd < 0) return `Error: Index ${index} out of range (only ${results.length} results available)`;
-      
+
       const selectedResults: string[] = [];
       for (let i = 0; i < count && startFromEnd - i >= 0; i++) {
         selectedResults.push(results[startFromEnd - i]);
       }
-      
+
       return selectedResults.join('\n');
     }
-    
+
     // Check for pipe command with argument: xc(text)
     const argMatch = baseCmd.match(/^(\w+)\((.+)\)$/);
     if (argMatch) {
@@ -475,13 +476,13 @@ export function Terminal() {
         return await pipeCmd.fn(arg);
       }
     }
-    
+
     return null;
   };
 
   // Limit result history to prevent memory issues
   const MAX_RESULT_HISTORY = 100;
-  
+
   const addResultToHistory = (result: string) => {
     resultHistoryRef.current = [...resultHistoryRef.current.slice(-MAX_RESULT_HISTORY + 1), result];
     setResultHistory(prev => [...prev.slice(-MAX_RESULT_HISTORY + 1), result]);
@@ -489,7 +490,7 @@ export function Terminal() {
 
   const processCommand = async (cmd: string) => {
     const trimmedCmd = cmd.trim();
-    
+
     if (!trimmedCmd) return;
 
     addOutput('command', `> ${cmd}`);
@@ -512,7 +513,7 @@ export function Terminal() {
     if (lowerCmd.startsWith('r.mock')) {
       const argsStr = trimmedCmd.slice(6).trim();
       const mockArgs = parseMockArgs(argsStr);
-      
+
       if (!mockArgs) {
         addOutput('info', `🎲 Mock Data Generator
 
@@ -538,14 +539,14 @@ Examples:
 Visual tool: v.mock`);
         return;
       }
-      
+
       try {
         const fields = parseFieldsString(mockArgs.fields);
         if (fields.length === 0) {
           addOutput('error', 'Error: No valid fields provided. Use format: "field1:type,field2:type"');
           return;
         }
-        
+
         const mocks = generateMocks(fields, mockArgs.count);
         const jsonOutput = formatMocksAsJson(mocks);
         addOutput('result', `🎲 Generated ${mockArgs.count} mock record(s):\n\n${jsonOutput}`);
@@ -662,17 +663,17 @@ Examples:
         const seconds = Math.floor(diff / 1000);
         const minutes = Math.floor(seconds / 60);
         const hours = Math.floor(minutes / 60);
-        
+
         if (seconds < 60) return `${seconds}s ago`;
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
         return date.toLocaleString();
       };
-      
+
       const output = recentCmds
         .map((entry, i) => `  ${String(i + 1).padStart(2)}. ${formatTime(entry.timestamp).padEnd(12)} ${entry.cmd}`)
         .join('\n');
-      
+
       addOutput('info', `📋 Recent commands (newest first):\n\n${output}`);
       return;
     }
@@ -741,7 +742,7 @@ Examples:
     // Bookmark commands (bk.*)
     if (lowerCmd.startsWith('bk.')) {
       const bookmarksList = getBookmarksStatic();
-      
+
       // bk.list - list all bookmarks
       if (lowerCmd === 'bk.list') {
         if (bookmarksList.length === 0) {
@@ -754,7 +755,7 @@ Examples:
           acc[cat].push(bk);
           return acc;
         }, {} as Record<string, typeof bookmarksList>);
-        
+
         let output = '🔖 Bookmarks:\n';
         for (const [category, bks] of Object.entries(grouped)) {
           output += `\n  [${category}]\n`;
@@ -766,49 +767,49 @@ Examples:
         addOutput('info', output);
         return;
       }
-      
+
       // bk.search(query) - search bookmarks
       const searchMatch = lowerCmd.match(/^bk\.search\((.+)\)$/);
       if (searchMatch) {
         const query = searchMatch[1].replace(/^["']|["']$/g, '').trim();
-        const results = bookmarksList.filter(b => 
+        const results = bookmarksList.filter(b =>
           b.id.includes(query.toLowerCase()) ||
           b.name.toLowerCase().includes(query.toLowerCase()) ||
           b.url.toLowerCase().includes(query.toLowerCase()) ||
           b.category?.includes(query.toLowerCase()) ||
           b.tags?.some(t => t.includes(query.toLowerCase()))
         );
-        
+
         if (results.length === 0) {
           addOutput('info', `🔖 No bookmarks found matching "${query}"`);
           return;
         }
-        
-        const output = results.map(bk => 
+
+        const output = results.map(bk =>
           `  bk.${bk.id.padEnd(15)} ${bk.name} → ${bk.url}`
         ).join('\n');
         addOutput('info', `🔖 Search results for "${query}":\n\n${output}`);
         return;
       }
-      
+
       // bk.cat(category) - list by category
       const catMatch = lowerCmd.match(/^bk\.cat\((.+)\)$/);
       if (catMatch) {
         const category = catMatch[1].replace(/^["']|["']$/g, '').trim().toLowerCase();
         const results = bookmarksList.filter(b => b.category?.toLowerCase() === category);
-        
+
         if (results.length === 0) {
           addOutput('info', `🔖 No bookmarks in category "${category}"`);
           return;
         }
-        
-        const output = results.map(bk => 
+
+        const output = results.map(bk =>
           `  bk.${bk.id.padEnd(15)} ${bk.name}`
         ).join('\n');
         addOutput('info', `🔖 Bookmarks in "${category}":\n\n${output}`);
         return;
       }
-      
+
       // bk.export - export bookmarks
       if (lowerCmd === 'bk.export') {
         if (bookmarksList.length === 0) {
@@ -820,7 +821,7 @@ Examples:
         addOutput('result', `🔖 Exported ${bookmarksList.length} bookmarks to clipboard!`);
         return;
       }
-      
+
       // bk.1-9 - open by shortcut
       const shortcutMatch = lowerCmd.match(/^bk\.([1-9])$/);
       if (shortcutMatch) {
@@ -835,7 +836,7 @@ Examples:
         addOutput('error', `No bookmark assigned to shortcut ${num}. Use v.bookmarks to assign shortcuts.`);
         return;
       }
-      
+
       // bk.<name> - open bookmark by id
       const nameMatch = lowerCmd.match(/^bk\.(\w+)$/);
       if (nameMatch) {
@@ -852,11 +853,11 @@ Examples:
         addOutput('error', `Bookmark not found: 'bk.${bookmarkId}'.${available ? ` Try: ${available}` : ' No bookmarks yet. Use bk.add(name, url) or v.bookmarks.'}`);
         return;
       }
-      
+
       addOutput('error', `Invalid bookmark command. Try: bk.list, bk.add(name, url), bk.<name>, or bk.1-9`);
       return;
     }
-    
+
     // bk.add(name, url) or bk.add(name, url, category) - add bookmark
     const bkAddMatch = trimmedCmd.match(/^bk\.add\(\s*([^,]+?)\s*,\s*([^,]+?)(?:\s*,\s*(.+?))?\s*\)$/i);
     if (bkAddMatch) {
@@ -864,17 +865,17 @@ Examples:
       const cleanName = name.replace(/^["']|["']$/g, '').trim();
       const cleanUrl = url.replace(/^["']|["']$/g, '').trim();
       const cleanCategory = category?.replace(/^["']|["']$/g, '').trim();
-      
+
       if (!cleanName) {
         addOutput('error', 'Error: Bookmark name cannot be empty.');
         return;
       }
-      
+
       if (!cleanUrl) {
         addOutput('error', 'Error: Bookmark URL cannot be empty.');
         return;
       }
-      
+
       const result = addBookmark(cleanName, cleanUrl, cleanCategory);
       if (result.success) {
         addOutput('result', `✅ Bookmark "${cleanName}" added!\n   Open with: bk.${result.id}`);
@@ -883,18 +884,18 @@ Examples:
       }
       return;
     }
-    
+
     // bk.rm(id) - remove bookmark
     const bkRmMatch = trimmedCmd.match(/^bk\.rm\(\s*(.+?)\s*\)$/i);
     if (bkRmMatch) {
       const bookmarkId = bkRmMatch[1].replace(/^["']|["']$/g, '').trim().toLowerCase();
       const bookmark = getBookmarkByIdStatic(bookmarkId);
-      
+
       if (!bookmark) {
         addOutput('error', `Bookmark "${bookmarkId}" not found.`);
         return;
       }
-      
+
       removeBookmark(bookmarkId);
       addOutput('result', `🗑️ Bookmark "${bookmark.name}" removed.`);
       return;
@@ -911,17 +912,17 @@ Examples:
       const [, name, url] = embedAddMatch;
       const cleanName = name.replace(/^["']|["']$/g, '').trim();
       const cleanUrl = url.replace(/^["']|["']$/g, '').trim();
-      
+
       if (!cleanName) {
         addOutput('error', 'Error: Tool name cannot be empty.');
         return;
       }
-      
+
       if (!cleanUrl) {
         addOutput('error', 'Error: Tool URL cannot be empty.');
         return;
       }
-      
+
       // Validate URL format
       try {
         new URL(cleanUrl);
@@ -929,7 +930,7 @@ Examples:
         addOutput('error', `Error: Invalid URL format: "${cleanUrl}"`);
         return;
       }
-      
+
       const result = addEmbeddedTool(cleanName, cleanUrl);
       if (result.success) {
         const toolId = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -946,20 +947,20 @@ Examples:
       const [, pattern, text] = regexMatch;
       const cleanPattern = pattern.replace(/^["']|["']$/g, '');
       const cleanText = text.replace(/^["']|["']$/g, '');
-      
+
       if (!cleanPattern) {
         addOutput('error', 'Error: Regex pattern cannot be empty.');
         return;
       }
-      
+
       try {
         const regex = new RegExp(cleanPattern, 'g');
         const matches = cleanText.match(regex);
         const testResult = regex.test(cleanText);
-        
+
         // Reset lastIndex for exec
         regex.lastIndex = 0;
-        
+
         // Get detailed match info
         const allMatches: { match: string; index: number }[] = [];
         let execMatch;
@@ -967,7 +968,7 @@ Examples:
           allMatches.push({ match: execMatch[0], index: execMatch.index });
           if (!regex.global) break;
         }
-        
+
         if (testResult && allMatches.length > 0) {
           const matchList = allMatches
             .map((m, i) => `  ${i + 1}. "${m.match}" at index ${m.index}`)
@@ -985,7 +986,7 @@ Examples:
     if (trimmedCmd.includes('|')) {
       const parts = trimmedCmd.split('|').map(p => p.trim());
       let result: string | null = null;
-      
+
       for (const part of parts) {
         result = await executeCommand(part, result || undefined);
         if (result === null) {
@@ -993,7 +994,7 @@ Examples:
           return;
         }
       }
-      
+
       if (result) {
         addOutput('result', result);
         addResultToHistory(result);
@@ -1032,18 +1033,18 @@ Examples:
   const fuzzyMatch = (query: string, target: string): number => {
     const q = query.toLowerCase();
     const t = target.toLowerCase();
-    
+
     // Exact match - highest priority
     if (t === q) return 100;
-    
+
     // Prefix match - high priority
     if (t.startsWith(q)) return 90 + (q.length / t.length) * 10;
-    
+
     // Fuzzy match - check if all chars appear in order
     let queryIndex = 0;
     let score = 0;
     let lastMatchIndex = -1;
-    
+
     for (let i = 0; i < t.length && queryIndex < q.length; i++) {
       if (t[i] === q[queryIndex]) {
         // Bonus for consecutive characters
@@ -1055,10 +1056,10 @@ Examples:
         queryIndex++;
       }
     }
-    
+
     // All query characters must be found
     if (queryIndex !== q.length) return -1;
-    
+
     return score;
   };
 
@@ -1067,7 +1068,7 @@ Examples:
     const q = query.toLowerCase();
     const t = target.toLowerCase();
     const indices: number[] = [];
-    
+
     let queryIndex = 0;
     for (let i = 0; i < t.length && queryIndex < q.length; i++) {
       if (t[i] === q[queryIndex]) {
@@ -1075,16 +1076,16 @@ Examples:
         queryIndex++;
       }
     }
-    
+
     return queryIndex === q.length ? indices : [];
   };
 
   // Render command name with highlighted matched characters
   const renderHighlightedName = (name: string, query: string) => {
     if (!query) return <span>{name}</span>;
-    
+
     const indices = new Set(getMatchIndices(query, name));
-    
+
     return (
       <span>
         {name.split('').map((char, i) => (
@@ -1135,13 +1136,13 @@ Examples:
 
   const getFilteredCommands = () => {
     const allCommands = getAllCommands();
-    
+
     // Check if we're after a pipe
     const pipeIndex = input.lastIndexOf('|');
     const currentPart = pipeIndex >= 0 ? input.slice(pipeIndex + 1).trim() : input.trim();
-    
+
     if (!currentPart) return allCommands;
-    
+
     // Use fuzzy matching and sort by score
     return allCommands
       .map(cmd => ({ ...cmd, score: fuzzyMatch(currentPart, cmd.name) }))
@@ -1151,28 +1152,28 @@ Examples:
 
   const getAutocompleteSuggestions = (partial: string): string[] => {
     if (!partial) return [];
-    
+
     // Check if we're after a pipe
     const pipeIndex = partial.lastIndexOf('|');
     const currentPart = pipeIndex >= 0 ? partial.slice(pipeIndex + 1).trim() : partial;
     const prefix = pipeIndex >= 0 ? partial.slice(0, pipeIndex + 1) + ' ' : '';
-    
+
     const embeddedToolsList = getEmbeddedToolsStatic();
     const allCommands = [...Object.keys(GENERATOR_COMMANDS), 'r.mock', 'r.raffle', ...Object.keys(PIPE_COMMANDS), ...Object.keys(VISUAL_TOOLS).map(t => `v.${t}`), ...embeddedToolsList.map(t => `ve.${t.id}`), ...Object.keys(EMBEDDED_INTERPRETERS).map(t => `ei.${t}`), 'latest', 'help', 'clear'];
-    
+
     // Use fuzzy matching and sort by score
     const matches = allCommands
       .map(cmd => ({ name: cmd, score: fuzzyMatch(currentPart, cmd) }))
       .filter(cmd => cmd.score >= 0)
       .sort((a, b) => b.score - a.score);
-    
+
     return matches.map(match => prefix + match.name);
   };
 
   const getGhostText = (): string => {
     const trimmed = input.trim();
     if (!trimmed || showAutocomplete) return '';
-    
+
     const suggestions = getAutocompleteSuggestions(trimmed);
     if (suggestions.length >= 1) {
       return suggestions[0].slice(trimmed.length);
@@ -1192,11 +1193,11 @@ Examples:
   const handleInputChange = (value: string) => {
     setInput(value);
     setHistoryIndex(-1);
-    
+
     // Show autocomplete when typing (or keep showing if already open with empty input)
     const pipeIndex = value.lastIndexOf('|');
     const currentPart = pipeIndex >= 0 ? value.slice(pipeIndex + 1).trim() : value.trim();
-    
+
     if (currentPart.length > 0) {
       setShowAutocomplete(true);
       setAutocompleteIndex(0);
@@ -1208,7 +1209,7 @@ Examples:
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     const filteredCommands = getFilteredCommands();
-    
+
     if (e.key === 'Enter') {
       if (showAutocomplete && filteredCommands.length > 0) {
         e.preventDefault();
@@ -1308,7 +1309,7 @@ Examples:
 
   // Panel content component to reuse in both desktop panel and mobile drawer
   const PanelContent = () => (
-    <div 
+    <div
       ref={!isMobile ? visualPanelRef : undefined}
       className="flex flex-col h-full"
       onClick={(e) => e.stopPropagation()}
@@ -1350,9 +1351,9 @@ Examples:
       {/* Panel body */}
       <div className="flex-1 overflow-auto">
         {panelMode === 'embed' && activeEmbeddedTool ? (
-          <EmbedViewer 
-            url={activeEmbeddedTool.url} 
-            name={activeEmbeddedTool.name} 
+          <EmbedViewer
+            url={activeEmbeddedTool.url}
+            name={activeEmbeddedTool.name}
             description={activeEmbeddedTool.description}
           />
         ) : panelMode === 'interpreter' && activeInterpreter && EMBEDDED_INTERPRETERS[activeInterpreter] ? (
@@ -1457,7 +1458,7 @@ Examples:
 
   // Tool selector dropdown - unified for visual tools, embedded tools, and interpreters
   const renderToolSelector = () => {
-    const currentValue = panelMode === 'interpreter' 
+    const currentValue = panelMode === 'interpreter'
       ? (activeInterpreter ? `ei.${activeInterpreter}` : '')
       : panelMode === 'embed'
         ? (activeEmbeddedTool ? `ve.${activeEmbeddedTool.id}` : '')
@@ -1471,7 +1472,7 @@ Examples:
         onChange={(e) => {
           e.stopPropagation();
           const value = e.target.value;
-          
+
           if (value.startsWith('ei.')) {
             const lang = value.slice(3);
             if (EMBEDDED_INTERPRETERS[lang]) {
@@ -1501,13 +1502,12 @@ Examples:
           }
         }}
         onClick={(e) => e.stopPropagation()}
-        className={`text-xs px-2 py-1 rounded border outline-none cursor-pointer transition-colors ${
-          panelMode === 'interpreter'
+        className={`text-xs px-2 py-1 rounded border outline-none cursor-pointer transition-colors ${panelMode === 'interpreter'
             ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30 hover:bg-yellow-500/30'
             : panelMode === 'embed'
               ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/30'
               : 'bg-primary/20 text-primary border-primary/30 hover:bg-primary/30'
-        }`}
+          }`}
       >
         {!currentValue && <option value="">Select...</option>}
         <optgroup label="Visual Tools" className="bg-card text-foreground">
@@ -1543,13 +1543,13 @@ Examples:
   };
 
   return (
-    <div 
+    <div
       className="flex h-screen bg-background"
       onClick={handleContainerClick}
     >
       {/* Scanline effect overlay */}
       <div className="fixed inset-0 scanline pointer-events-none z-10 opacity-50" />
-      
+
       {/* Main terminal area */}
       <div className={`flex flex-col cursor-text transition-all duration-300 overflow-visible ${showVisualPanel && !isMobile ? 'w-1/2' : 'w-full'}`}>
         {/* Header */}
@@ -1565,25 +1565,41 @@ Examples:
                 {isMobile ? 'devxy ~' : 'devxy@terminal ~ '}
               </span>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowVisualPanel(!showVisualPanel);
-              }}
-              className={`p-2 rounded-md transition-colors ${
-                showVisualPanel 
-                  ? 'bg-primary/20 text-primary' 
-                  : 'hover:bg-muted text-muted-foreground hover:text-foreground'
-              }`}
-              title="Toggle visual tools panel"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
+
+            <div>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open("/tools/visual")
+                }}
+                className={`p-2 rounded-md transition-colors ${showVisualPanel
+                    ? 'bg-primary/20 text-primary'
+                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                title="Toggle visual tools panel"
+              >
+                <SquareArrowOutUpRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowVisualPanel(!showVisualPanel);
+                }}
+                className={`p-2 rounded-md transition-colors ${showVisualPanel
+                    ? 'bg-primary/20 text-primary'
+                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                  }`}
+                title="Toggle visual tools panel"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </button>
+            </div>
+
           </div>
         </header>
 
         {/* Output area */}
-        <div 
+        <div
           ref={outputRef}
           className="flex-1 overflow-y-auto p-3 md:p-4 space-y-1"
         >
@@ -1597,204 +1613,202 @@ Examples:
           ))}
         </div>
 
-      {/* Input area */}
-      <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative overflow-visible">
-        {/* Discord-style floating autocomplete */}
-        {showAutocomplete && (() => {
-          const filteredCmds = getFilteredCommands();
-          if (filteredCmds.length === 0) return null;
-          
-          // Get recent unique commands (last 5, excluding duplicates)
-          const recentCommands: typeof filteredCmds = [];
-          const seenRecent = new Set<string>();
-          for (let i = history.length - 1; i >= 0 && recentCommands.length < 5; i--) {
-            const cmd = history[i].cmd.toLowerCase().split(/\s+/)[0]; // Get base command
-            if (!seenRecent.has(cmd)) {
-              const matchingCmd = filteredCmds.find(c => c.name.toLowerCase() === cmd);
-              if (matchingCmd) {
-                recentCommands.push({ ...matchingCmd, type: 'recent' as any });
-                seenRecent.add(cmd);
+        {/* Input area */}
+        <div className="flex-shrink-0 border-t border-border/50 bg-card/50 backdrop-blur-sm relative overflow-visible">
+          {/* Discord-style floating autocomplete */}
+          {showAutocomplete && (() => {
+            const filteredCmds = getFilteredCommands();
+            if (filteredCmds.length === 0) return null;
+
+            // Get recent unique commands (last 5, excluding duplicates)
+            const recentCommands: typeof filteredCmds = [];
+            const seenRecent = new Set<string>();
+            for (let i = history.length - 1; i >= 0 && recentCommands.length < 5; i--) {
+              const cmd = history[i].cmd.toLowerCase().split(/\s+/)[0]; // Get base command
+              if (!seenRecent.has(cmd)) {
+                const matchingCmd = filteredCmds.find(c => c.name.toLowerCase() === cmd);
+                if (matchingCmd) {
+                  recentCommands.push({ ...matchingCmd, type: 'recent' as any });
+                  seenRecent.add(cmd);
+                }
               }
             }
-          }
-          
-          // Group commands by category
-          const groups = {
-            recent: { label: 'Recent', commands: recentCommands },
-            generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator' && !seenRecent.has(c.name.toLowerCase())) },
-            pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe' && !seenRecent.has(c.name.toLowerCase())) },
-            navigation: { label: 'Navigation', commands: filteredCmds.filter(c => c.type === 'navigation' && !seenRecent.has(c.name.toLowerCase())) },
-            visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual' && !seenRecent.has(c.name.toLowerCase())) },
-            embed: { label: 'Embedded Tools', commands: filteredCmds.filter(c => c.type === 'embed' && !seenRecent.has(c.name.toLowerCase())) },
-            interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter' && !seenRecent.has(c.name.toLowerCase())) },
-            history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history' && !seenRecent.has(c.name.toLowerCase())) },
-            utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility' && !seenRecent.has(c.name.toLowerCase())) },
-          };
-          
-          // Build flat list for index tracking
-          let globalIndex = 0;
-          
-          return (
-            <div 
-              ref={autocompleteRef}
-              className="absolute bottom-full left-0 right-0 mb-1 mx-2 md:mx-4 bg-card border border-border rounded-md shadow-lg z-50 max-h-72 overflow-hidden"
-            >
-              {/* Scrollable command list */}
-              <div className="overflow-y-auto max-h-72 py-1">
-                {Object.entries(groups).map(([type, group]) => {
-                  if (group.commands.length === 0) return null;
-                  
-                  const groupStartIndex = globalIndex;
-                  const groupItems = group.commands.map((cmd, i) => {
-                    const currentIndex = groupStartIndex + i;
-                    const isSelected = currentIndex === autocompleteIndex;
-                    
+
+            // Group commands by category
+            const groups = {
+              recent: { label: 'Recent', commands: recentCommands },
+              generator: { label: 'Generators', commands: filteredCmds.filter(c => c.type === 'generator' && !seenRecent.has(c.name.toLowerCase())) },
+              pipe: { label: 'Pipes', commands: filteredCmds.filter(c => c.type === 'pipe' && !seenRecent.has(c.name.toLowerCase())) },
+              navigation: { label: 'Navigation', commands: filteredCmds.filter(c => c.type === 'navigation' && !seenRecent.has(c.name.toLowerCase())) },
+              visual: { label: 'Visual Tools', commands: filteredCmds.filter(c => c.type === 'visual' && !seenRecent.has(c.name.toLowerCase())) },
+              embed: { label: 'Embedded Tools', commands: filteredCmds.filter(c => c.type === 'embed' && !seenRecent.has(c.name.toLowerCase())) },
+              interpreter: { label: 'Interpreters', commands: filteredCmds.filter(c => c.type === 'interpreter' && !seenRecent.has(c.name.toLowerCase())) },
+              history: { label: 'History', commands: filteredCmds.filter(c => c.type === 'history' && !seenRecent.has(c.name.toLowerCase())) },
+              utility: { label: 'Utility', commands: filteredCmds.filter(c => c.type === 'utility' && !seenRecent.has(c.name.toLowerCase())) },
+            };
+
+            // Build flat list for index tracking
+            let globalIndex = 0;
+
+            return (
+              <div
+                ref={autocompleteRef}
+                className="absolute bottom-full left-0 right-0 mb-1 mx-2 md:mx-4 bg-card border border-border rounded-md shadow-lg z-50 max-h-72 overflow-hidden"
+              >
+                {/* Scrollable command list */}
+                <div className="overflow-y-auto max-h-72 py-1">
+                  {Object.entries(groups).map(([type, group]) => {
+                    if (group.commands.length === 0) return null;
+
+                    const groupStartIndex = globalIndex;
+                    const groupItems = group.commands.map((cmd, i) => {
+                      const currentIndex = groupStartIndex + i;
+                      const isSelected = currentIndex === autocompleteIndex;
+
+                      return (
+                        <button
+                          key={cmd.name}
+                          data-index={currentIndex}
+                          onClick={() => selectAutocompleteItem(cmd.name)}
+                          onMouseEnter={() => setAutocompleteIndex(currentIndex)}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm ${isSelected
+                              ? 'bg-primary/20 text-foreground border-l-2 border-primary'
+                              : 'text-foreground hover:bg-muted/50'
+                            }`}
+                        >
+                          <span className={`shrink-0 w-12 text-[10px] font-medium ${type === 'recent' ? 'text-blue-400' :
+                              type === 'generator' ? 'text-emerald-400' :
+                                type === 'pipe' ? 'text-violet-400' :
+                                  type === 'navigation' ? 'text-sky-400' :
+                                    type === 'visual' ? 'text-purple-400' :
+                                      type === 'embed' ? 'text-cyan-400' :
+                                        type === 'interpreter' ? 'text-amber-400' :
+                                          type === 'history' ? 'text-orange-400' :
+                                            'text-muted-foreground'
+                            }`}>
+                            {type === 'recent' ? 'recent' :
+                              type === 'generator' ? 'gen' :
+                                type === 'pipe' ? 'pipe' :
+                                  type === 'navigation' ? 'goto' :
+                                    type === 'visual' ? 'visual' :
+                                      type === 'embed' ? 'embed' :
+                                        type === 'interpreter' ? 'lang' :
+                                          type === 'history' ? 'hist' : 'util'}
+                          </span>
+                          <span className="font-mono shrink-0">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
+                          <span className="text-xs text-muted-foreground truncate">{cmd.desc}</span>
+                        </button>
+                      );
+                    });
+
+                    globalIndex += group.commands.length;
+
                     return (
-                      <button
-                        key={cmd.name}
-                        data-index={currentIndex}
-                        onClick={() => selectAutocompleteItem(cmd.name)}
-                        onMouseEnter={() => setAutocompleteIndex(currentIndex)}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left text-sm ${
-                          isSelected 
-                            ? 'bg-primary/20 text-foreground border-l-2 border-primary' 
-                            : 'text-foreground hover:bg-muted/50'
-                        }`}
-                      >
-                        <span className={`shrink-0 w-12 text-[10px] font-medium ${
-                          type === 'recent' ? 'text-blue-400' :
-                          type === 'generator' ? 'text-emerald-400' :
-                          type === 'pipe' ? 'text-violet-400' :
-                          type === 'navigation' ? 'text-sky-400' :
-                          type === 'visual' ? 'text-purple-400' :
-                          type === 'embed' ? 'text-cyan-400' :
-                          type === 'interpreter' ? 'text-amber-400' :
-                          type === 'history' ? 'text-orange-400' :
-                          'text-muted-foreground'
-                        }`}>
-                          {type === 'recent' ? 'recent' :
-                           type === 'generator' ? 'gen' : 
-                           type === 'pipe' ? 'pipe' : 
-                           type === 'navigation' ? 'goto' :
-                           type === 'visual' ? 'visual' :
-                           type === 'embed' ? 'embed' :
-                           type === 'interpreter' ? 'lang' :
-                           type === 'history' ? 'hist' : 'util'}
-                        </span>
-                        <span className="font-mono shrink-0">{renderHighlightedName(cmd.name, getCurrentQuery())}</span>
-                        <span className="text-xs text-muted-foreground truncate">{cmd.desc}</span>
-                      </button>
-                    );
-                  });
-                  
-                  globalIndex += group.commands.length;
-                  
-                  return (
-                    <div key={type}>
-                      {/* Group header */}
-                      <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 bg-muted/30 sticky top-0">
-                        {group.label}
+                      <div key={type}>
+                        {/* Group header */}
+                        <div className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 bg-muted/30 sticky top-0">
+                          {group.label}
+                        </div>
+                        {groupItems}
                       </div>
-                      {groupItems}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
+            );
+          })()}
+
+          <div className="flex items-center px-3 md:px-4 py-3 gap-2">
+            <span className="text-terminal-prompt font-bold">❯</span>
+            <div className="flex-1 relative">
+              {/* Ghost text layer */}
+              <div className="absolute inset-0 pointer-events-none flex items-center">
+                <span className="text-transparent">{input}</span>
+                <span className="text-muted-foreground/40">{getGhostText()}</span>
+              </div>
+              {/* Actual input */}
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => handleInputChange(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={() => {
+                  // Reset autocomplete index on focus
+                  setAutocompleteIndex(0);
+                }}
+                onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
+                className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10 text-sm"
+                placeholder="Type a command... (press / for commands)"
+                spellCheck={false}
+                autoComplete="off"
+              />
             </div>
-          );
-        })()}
-        
-        <div className="flex items-center px-3 md:px-4 py-3 gap-2">
-          <span className="text-terminal-prompt font-bold">❯</span>
-          <div className="flex-1 relative">
-            {/* Ghost text layer */}
-            <div className="absolute inset-0 pointer-events-none flex items-center">
-              <span className="text-transparent">{input}</span>
-              <span className="text-muted-foreground/40">{getGhostText()}</span>
-            </div>
-            {/* Actual input */}
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={() => {
-                // Reset autocomplete index on focus
-                setAutocompleteIndex(0);
-              }}
-              onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
-              className="w-full bg-transparent outline-none text-foreground caret-primary placeholder:text-muted-foreground/50 relative z-10 text-sm"
-              placeholder="Type a command... (press / for commands)"
-              spellCheck={false}
-              autoComplete="off"
-            />
-          </div>
-          {/* Mobile FAB inline */}
-          {isMobile && (
-            <MobileFAB
-              onRunCommand={(cmd) => {
-                setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
-                processCommand(cmd);
-              }}
-              onOpenTool={(tool) => {
-                setActiveVisualTool(tool);
-                setVisualToolArg(undefined);
-                setPanelMode('visual');
-                setShowVisualPanel(true);
-                addOutput('command', `> v.${tool}`);
-                addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
-              }}
-              onOpenInterpreter={(lang) => {
-                setActiveInterpreter(lang);
-                setPanelMode('interpreter');
-                setShowVisualPanel(true);
-                addOutput('command', `> ei.${lang}`);
-                addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
-              }}
-            />
-          )}
-          {!isMobile && <span className="w-2 h-5 bg-primary cursor-blink" />}
-        </div>
-        
-        {/* Quick commands bar - simplified for mobile */}
-        <div className="border-t border-border/30 px-2 md:px-4 py-2 flex gap-1.5 md:gap-2 flex-wrap overflow-x-auto">
-          {Object.keys(GENERATOR_COMMANDS).slice(0, isMobile ? 4 : undefined).map((cmd) => (
-            <button
-              key={cmd}
-              onClick={() => {
-                setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
-                processCommand(cmd);
-                inputRef.current?.focus();
-              }}
-              className="text-xs px-1.5 md:px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50 whitespace-nowrap"
-            >
-              {cmd}
-            </button>
-          ))}
-          {!isMobile && <span className="text-muted-foreground/50">|</span>}
-          {Object.keys(PIPE_COMMANDS).slice(0, isMobile ? 3 : undefined).map((cmd) => (
-            <button
-              key={cmd}
-              onClick={() => {
-                const currentInput = input.trim();
-                if (currentInput && !currentInput.includes('|')) {
-                  const fullCmd = `${currentInput} | ${cmd}`;
-                  setInput('');
-                  setHistory(prev => [...prev, { cmd: fullCmd, timestamp: new Date() }]);
-                  processCommand(fullCmd);
-                } else {
+            {/* Mobile FAB inline */}
+            {isMobile && (
+              <MobileFAB
+                onRunCommand={(cmd) => {
                   setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
                   processCommand(cmd);
-                }
-                inputRef.current?.focus();
-              }}
-              className="text-xs px-1.5 md:px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary transition-colors border border-primary/30 hover:border-primary/50 whitespace-nowrap"
-            >
-              {cmd}
-            </button>
-          ))}
-        </div>
+                }}
+                onOpenTool={(tool) => {
+                  setActiveVisualTool(tool);
+                  setVisualToolArg(undefined);
+                  setPanelMode('visual');
+                  setShowVisualPanel(true);
+                  addOutput('command', `> v.${tool}`);
+                  addOutput('info', `📺 Opening visual tool: ${VISUAL_TOOLS[tool].icon} ${VISUAL_TOOLS[tool].description}`);
+                }}
+                onOpenInterpreter={(lang) => {
+                  setActiveInterpreter(lang);
+                  setPanelMode('interpreter');
+                  setShowVisualPanel(true);
+                  addOutput('command', `> ei.${lang}`);
+                  addOutput('info', `🖥️ Opening interpreter: ${EMBEDDED_INTERPRETERS[lang].icon} ${EMBEDDED_INTERPRETERS[lang].description}`);
+                }}
+              />
+            )}
+            {!isMobile && <span className="w-2 h-5 bg-primary cursor-blink" />}
+          </div>
+
+          {/* Quick commands bar - simplified for mobile */}
+          <div className="border-t border-border/30 px-2 md:px-4 py-2 flex gap-1.5 md:gap-2 flex-wrap overflow-x-auto">
+            {Object.keys(GENERATOR_COMMANDS).slice(0, isMobile ? 4 : undefined).map((cmd) => (
+              <button
+                key={cmd}
+                onClick={() => {
+                  setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
+                  processCommand(cmd);
+                  inputRef.current?.focus();
+                }}
+                className="text-xs px-1.5 md:px-2 py-1 rounded bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50 hover:border-primary/50 whitespace-nowrap"
+              >
+                {cmd}
+              </button>
+            ))}
+            {!isMobile && <span className="text-muted-foreground/50">|</span>}
+            {Object.keys(PIPE_COMMANDS).slice(0, isMobile ? 3 : undefined).map((cmd) => (
+              <button
+                key={cmd}
+                onClick={() => {
+                  const currentInput = input.trim();
+                  if (currentInput && !currentInput.includes('|')) {
+                    const fullCmd = `${currentInput} | ${cmd}`;
+                    setInput('');
+                    setHistory(prev => [...prev, { cmd: fullCmd, timestamp: new Date() }]);
+                    processCommand(fullCmd);
+                  } else {
+                    setHistory(prev => [...prev, { cmd, timestamp: new Date() }]);
+                    processCommand(cmd);
+                  }
+                  inputRef.current?.focus();
+                }}
+                className="text-xs px-1.5 md:px-2 py-1 rounded bg-primary/20 hover:bg-primary/30 text-primary hover:text-primary transition-colors border border-primary/30 hover:border-primary/50 whitespace-nowrap"
+              >
+                {cmd}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Status bar - simplified for mobile */}
@@ -1804,7 +1818,7 @@ Examples:
           </span>
           <div className="flex items-center gap-3">
             <SponsorBadge />
-            <a 
+            <a
               href={APP_INFO.repository}
               target="_blank"
               rel="noopener noreferrer"
@@ -1814,7 +1828,7 @@ Examples:
               <Github className="w-3.5 h-3.5" />
               {!isMobile && <span>GitHub</span>}
             </a>
-            <a 
+            <a
               href={APP_INFO.author.website}
               target="_blank"
               rel="noopener noreferrer"

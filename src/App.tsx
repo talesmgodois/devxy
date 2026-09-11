@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Install from "./pages/Install";
 import Prompt from "./pages/Prompt";
 import VisualTool from "./pages/VisualTool";
+import ToolsVisualIndex from "./pages/ToolsVisualIndex";
+import ToolsVisualDetail from "./pages/ToolsVisualDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/install" element={<Install />} />
           <Route path="/prompt" element={<Prompt />} />
           <Route path="/visual/:type/:tool" element={<VisualTool />} />
+          <Route path="/tools/visual" element={<ToolsVisualIndex />} />
+          <Route path="/tools/visual/:tool" element={<ToolsVisualDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
