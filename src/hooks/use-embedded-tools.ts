@@ -35,10 +35,22 @@ const saveToolsToStorage = (tools: EmbeddedTool[]) => {
   }
 };
 
+export const getTools = (): EmbeddedTool[] => {
+  const defaultEmbeds = APP_INFO.defautEmbeds as unknown as EmbeddedTool[];
+  const toolsList = defaultEmbeds.concat(loadToolsFromStorage()) as EmbeddedTool[];
+  const tools: Map<string, EmbeddedTool> = new Map();
+  for(const tool of toolsList) {
+    if(!tools.has(tool.id)) {
+      tools.set(tool.id, tool);
+    }
+  }
+  return [...tools.values()];
+}
+
 
 export function useEmbeddedTools() {
-  const defaultEmbeds = APP_INFO.defautEmbeds as unknown as EmbeddedTool[];
-  const [tools, setTools] = useState<EmbeddedTool[]>(() => defaultEmbeds.concat(loadToolsFromStorage()) as EmbeddedTool[]);
+  
+  const [tools, setTools] = useState<EmbeddedTool[]>(() => getTools());
 
   useEffect(() => {
     saveToolsToStorage(tools);

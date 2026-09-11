@@ -15,6 +15,7 @@ COPY --from=build /app/dist /public
 
 ENV SERVER_ROOT=/public \
     SERVER_PORT=8080 \
-    SERVER_FALLBACK_PAGE=/public/index.html
+    SERVER_FALLBACK_PAGE=/public/index.html \
+    SERVER_HEALTH=true
 
 EXPOSE 8080
