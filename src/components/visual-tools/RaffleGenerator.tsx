@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Copy, Check, Shuffle } from 'lucide-react';
+import { Copy, Check, Shuffle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { generateRaffleNumber } from '@/utils/generators';
 
 interface RaffleGeneratorProps {
@@ -11,9 +12,10 @@ interface RaffleGeneratorProps {
 export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
   const [start, setStart] = useState('1');
   const [end, setEnd] = useState('100');
-  const [exclude, setExclude] = useState('');
   const [count, setCount] = useState(1);
-  const [results, setResults] = useState<number[]>([]);
+  const [excludePrevious, setExcludePrevious] = useState(false);
+  const [history, setHistory] = useState<number[]>([]);
+  const [lastDrawCount, setLastDrawCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -31,36 +33,48 @@ export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
 
     if (isNaN(startNum) || isNaN(endNum)) {
       setError('Início e fim precisam ser números inteiros válidos.');
-      setResults([]);
       return;
     }
     if (startNum > endNum) {
       setError(`Início (${startNum}) deve ser menor ou igual ao fim (${endNum}).`);
-      setResults([]);
       return;
     }
 
-    const excludeList = exclude
-      .split(',')
-      .map(v => parseInt(v.trim(), 10))
-      .filter(n => !isNaN(n));
+    const excludeSet = new Set<number>(excludePrevious ? history : []);
 
     try {
-      const drawn = Array.from({ length: count }, () => generateRaffleNumber(startNum, endNum, excludeList));
-      setResults(drawn);
+      const drawn: number[] = [];
+      for (let i = 0; i < count; i++) {
+        const n = generateRaffleNumber(startNum, endNum, Array.from(excludeSet));
+        drawn.push(n);
+        if (excludePrevious) excludeSet.add(n);
+      }
       setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Não foi possível sortear um número.');
-      setResults([]);
+      setHistory(prev => [...prev, ...drawn]);
+      setLastDrawCount(drawn.length);
+    } catch {
+      setError(
+        excludePrevious
+          ? `Não há mais números disponíveis entre ${startNum} e ${endNum} (todos já foram sorteados).`
+          : `Não foi possível sortear um número entre ${startNum} e ${endNum}.`
+      );
     }
-  }, [start, end, exclude, count]);
+  }, [start, end, count, excludePrevious, history]);
+
+  const reset = useCallback(() => {
+    setHistory([]);
+    setLastDrawCount(0);
+    setError(null);
+  }, []);
 
   const copyToClipboard = useCallback(async () => {
-    if (results.length === 0) return;
-    await navigator.clipboard.writeText(results.join('\n'));
+    if (history.length === 0) return;
+    await navigator.clipboard.writeText(history.join('\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [results]);
+  }, [history]);
+
+  const lastDrawStartIndex = history.length - lastDrawCount;
 
   return (
     <div className="h-full flex flex-col gap-5 p-6 bg-background text-foreground overflow-auto">
@@ -90,17 +104,6 @@ export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-muted-foreground mb-2">Excluir números (opcional)</label>
-        <Input
-          type="text"
-          placeholder="ex: 13, 27, 40"
-          value={exclude}
-          onChange={(e) => setExclude(e.target.value)}
-          className="h-10 font-mono"
-        />
-      </div>
-
       <div className="flex items-center gap-2">
         <label className="text-sm font-medium text-muted-foreground">Quantidade:</label>
         <Input
@@ -114,6 +117,17 @@ export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <Checkbox
+          id="exclude-previous"
+          checked={excludePrevious}
+          onCheckedChange={(checked) => setExcludePrevious(checked === true)}
+        />
+        <label htmlFor="exclude-previous" className="text-sm text-muted-foreground cursor-pointer">
+          Excluir resultados anteriores
+        </label>
+      </div>
+
+      <div className="flex items-center gap-2">
         <Button onClick={draw} className="gap-2 flex-1">
           <Shuffle className="h-4 w-4" />
           Sortear
@@ -121,11 +135,20 @@ export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
         <Button
           variant="ghost"
           onClick={copyToClipboard}
-          disabled={results.length === 0}
+          disabled={history.length === 0}
           className="gap-2"
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
           {copied ? 'Copiado!' : 'Copiar'}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={reset}
+          disabled={history.length === 0}
+          className="gap-2"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Reset
         </Button>
       </div>
 
@@ -135,16 +158,20 @@ export function RaffleGenerator({ initialValue }: RaffleGeneratorProps) {
         </div>
       )}
 
-      {results.length > 0 && (
+      {history.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-muted-foreground">
-            Resultado{results.length > 1 ? 's' : ''}:
+            Histórico ({history.length}):
           </span>
           <div className="flex flex-wrap gap-2 p-3 rounded-md border border-border bg-muted/30">
-            {results.map((n, i) => (
+            {history.map((n, i) => (
               <span
                 key={i}
-                className="px-3 py-1.5 rounded-md bg-primary/20 text-primary font-mono text-lg font-bold"
+                className={
+                  i >= lastDrawStartIndex
+                    ? 'px-3 py-1.5 rounded-md bg-primary/20 text-primary font-mono text-lg font-bold'
+                    : 'px-3 py-1.5 rounded-md bg-muted text-muted-foreground font-mono text-sm'
+                }
               >
                 {n}
               </span>

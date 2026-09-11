@@ -1,3 +1,5 @@
+import packageJson from '../../package.json';
+
 const defaultEmbedsTools = [
   {
       id: "owner",
@@ -31,13 +33,13 @@ const defaultEmbedsTools = [
 
 export const APP_INFO = {
   name: "Devxy",
-  version: "1.0.0",
+  version: packageJson.version,
   description: "Developer toolkit aggregator - micro-tools for developers",
   author: {
     name: "Tales Marinho Godois",
     website: "https://pro.mgodois.com",
     github: "https://github.com/talesmgodois",
-    email: "tales@mgodois.com",
+    email: "tales.godois@gmail.com",
   },
   repository: "https://github.com/talesmgodois/devxy",
   website: "https://devxy.mgodois.com",
