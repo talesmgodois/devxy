@@ -14,4 +14,4 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://devxy.lovable.app/sitemap.xml
+Sitemap: https://devxy.mgodois.com/sitemap.xml
