@@ -1,3 +1,4 @@
+import { APP_INFO } from '@/config/appInfo';
 import { useState, useEffect, useCallback } from 'react';
 
 export interface EmbeddedTool {
@@ -34,8 +35,10 @@ const saveToolsToStorage = (tools: EmbeddedTool[]) => {
   }
 };
 
+
 export function useEmbeddedTools() {
-  const [tools, setTools] = useState<EmbeddedTool[]>(() => loadToolsFromStorage());
+  const defaultEmbeds = APP_INFO.defautEmbeds as unknown as EmbeddedTool[];
+  const [tools, setTools] = useState<EmbeddedTool[]>(() => defaultEmbeds.concat(loadToolsFromStorage()) as EmbeddedTool[]);
 
   useEffect(() => {
     saveToolsToStorage(tools);

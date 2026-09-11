@@ -1,3 +1,34 @@
+const defaultEmbedsTools = [
+  {
+      id: "owner",
+      name: "Mgodois",
+      url: "https://pro.mgodois.com",
+      createdAt: new Date(),
+      description: "Tales´s personal website",
+  },
+  {
+      id: "clock",
+      name: "Clock",
+      url: "https://clock.mgodois.com",
+      createdAt: new Date(),
+      description: "Aplicativo web de relógio e pomodoro",
+  },
+  {
+      id: "juros",
+      name: "Juros",
+      url: "https://juros.mgodois.com",
+      createdAt: new Date(),
+      description: "Calculadora de juros",
+  },
+    {
+      id: "blog",
+      name: "Blog",
+      url: "https://blog.mgodois.com",
+      createdAt: new Date(),
+      description: "Tales' Blog",
+  }
+]
+
 export const APP_INFO = {
   name: "Devxy",
   version: "1.0.0",
@@ -15,6 +46,7 @@ export const APP_INFO = {
     githubSponsors: "https://github.com/sponsors/talesmgodois",
     buyMeACoffee: "https://buymeacoffee.com/mgodois",
   },
+  defautEmbeds: defaultEmbedsTools,
 } as const;
 
 export const getAboutInfo = (): string => {
